@@ -1,0 +1,11 @@
+{
+    "input":[
+	    {
+		    "type":"websocket-client",
+			"orgid":"f27df111-ca31-4700-99d4-2635b6c37851",
+			"typtag":"unr-honeypot",
+			"timezone":"US/Pacific",
+			"uri":"ws://134.197.113.12:32323/"
+		}
+	]
+}	
