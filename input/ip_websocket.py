@@ -28,7 +28,10 @@ class WsInp():
     def post_event(self, event, url=API_SRV):
         data = json.dumps(event).encode()
         files = {'file': data}
-        r = requests.post(url, files=files,
+        print(files)
+        token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE1NTEyOTI3NjgsInR5cGUiOiJhY2Nlc3MiLCJuYmYiOjE1NTEyOTE4NjgsImZyZXNoIjpmYWxzZSwianRpIjoiODMwYTNkNGItZTZhZS00ZTJmLTk1OTMtNjc0NTMyNjliM2VlIiwiaWRlbnRpdHkiOiJ0ZXN0IiwiaWF0IjoxNTUxMjkxODY4fQ.4j01mfendfgGz9RA5yUcThAxD6ygzkiuJeaTtJzayQs"
+        headers={'Authorization': token}
+        r = requests.post(url, files=files, headers=headers
                           data = {'orgid': self.orgid,
                                   'typtag': self.typtag,
                                   'timezone': self.timezone})  
