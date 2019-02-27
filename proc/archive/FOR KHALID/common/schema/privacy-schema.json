@@ -1,0 +1,13 @@
+{
+    "type" : "x-cowrie",
+    "ver" : "0.1",
+    "eventid" : 1,
+    "src_ref" : 0,
+	"msg" : 1,
+	"0" : {
+		"type" : 0,
+		"value" : 0,
+	}
+}
+	   
+    
