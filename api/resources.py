@@ -99,12 +99,12 @@ class TokenRefresh(Resource):
 
 
 class AllUsers(Resource):
-    @jwt_required
+##    @jwt_required
     def get(self):
-        cur_user = get_jwt_identity()
-        cur_user = UserModel.find_by_username(cur_user)
-        if not cur_user.isadmin:
-            return {'message': 'Administrative access required'}, 401
+##        cur_user = get_jwt_identity()
+##        cur_user = UserModel.find_by_username(cur_user)
+##        if not cur_user.isadmin:
+##            return {'message': 'Administrative access required'}, 401
 
         return UserModel.return_all()
     
