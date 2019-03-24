@@ -7,5 +7,6 @@
 			"timezone":"US/Pacific",
 			"uri":"ws://134.197.113.12:32323/"
 		}
-	]
+	],
+	"api_srv":"http://localhost:5000"
 }	

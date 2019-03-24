@@ -17,13 +17,18 @@ def parsemain(lf, orgid, typtag, tzname):
             [time_final, objects_val] = parse_iptables(line, tzname)
         if typtag == 'unr-honeypot':
             [time_final, objects_val] = parse_unr_honeypot(line, tzname)
+        if typtag == 'cuckoo-report':
+            [time_final, objects_val] = parse_cuckoo_report(line, tzname)
         else:
             print("Unknown file type (typtag): " + typtag)
             continue
-        observedDataRegKey = observed_data(time_final, orgid, objects_val)
+        try:
+            observedDataRegKey = observed_data(time_final, orgid, objects_val)
+        except:
+            pass
         bundle = stix2.Bundle(objects = [observedDataRegKey])
         json_val.append(json.loads(observedDataRegKey.serialize()))       
-    return bundle     
+    return json_val 
 
         
 def observed_data(time_final, orgid, objects_val):  

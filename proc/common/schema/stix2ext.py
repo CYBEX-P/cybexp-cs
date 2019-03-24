@@ -27,3 +27,7 @@ class Cowrie():
 @CustomObservable('x-unr-honeypot', [])
 class UnrHoneypot():
     pass
+
+@CustomObservable('x-cuckoo-report', [])
+class CuckooReport():
+    pass

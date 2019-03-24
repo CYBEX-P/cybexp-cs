@@ -16,6 +16,9 @@ fs = gridfs.GridFS(db)
 
 while True:
     cursor = coll.find({'processed':False})
+    if cursor.count() == 0:
+        time.sleep(600)
+        continue
     for e in cursor:
         upload_time = e['datetime']
         orgid = e['orgid']
@@ -26,13 +29,11 @@ while True:
         f = fs.get(fid)
         s = f.read()
 
-        bundle = parsemain(s, orgid, typtag, timezone)
-        import pdb
-        pdb.set_trace()
+        json_data = parsemain(s, orgid, typtag, timezone)
         for jd in json_data:
             i = put_data(jd)
         
         coll.update_one(e, {"$set":{"processed":True}})
+
         
-##        time.sleep(600)
 

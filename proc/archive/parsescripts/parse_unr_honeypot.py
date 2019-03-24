@@ -8,7 +8,7 @@ def parse_unr_honeypot(line, tzname = 'UTC'):
     data = json.loads(line)
 
     try:
-        time_final = data["timestamp"]
+        time_final = data["@timestamp"]
     except:
         return None, None
 
