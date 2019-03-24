@@ -42,10 +42,9 @@ class get_token(threading.Thread):
                     headers={'Authorization': 'Bearer ' + self.refresh_token}
                     ret = requests.post(self.refresh_url, headers=headers)
                     token = ret.json()['access_token']
-                    print(token)
                 except Exception as e:
                     logger.exception("message")                    
-            time.sleep(2)
+            time.sleep(800)
 
 class CybInp():
     def __init__(self, api_srv):

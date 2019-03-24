@@ -2,6 +2,7 @@ from flask_restful import Resource, reqparse
 import werkzeug, pytz, pymongo
 from datetime import datetime
 from flask_jwt_extended import jwt_required
+from run import mongo
 
 # Post Events to API
 event_parser = reqparse.RequestParser()
