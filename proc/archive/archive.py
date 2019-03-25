@@ -7,6 +7,7 @@ import time
 import gridfs
 from common.loaddb import loaddb
 from common.dbam import put_data
+from common.crypto import decrypt_file
 from parsemain import parsemain
 
 
@@ -27,9 +28,14 @@ while True:
         
         fid = e['fid']
         f = fs.get(fid)
-        s = f.read()
+        
+        s = str(decrypt_file(f, "../common/priv.pem"))
 
         json_data = parsemain(s, orgid, typtag, timezone)
+        
+        if json_data == []:
+            continue
+        
         for jd in json_data:
             i = put_data(jd)
         

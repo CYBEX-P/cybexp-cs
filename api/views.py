@@ -3,6 +3,9 @@ import werkzeug, pytz, pymongo
 from datetime import datetime
 from flask_jwt_extended import jwt_required
 from run import mongo
+from crypto import encrypt_file
+import pdb
+from io import BytesIO
 
 # Post Events to API
 event_parser = reqparse.RequestParser()
@@ -18,12 +21,15 @@ class Event(Resource):
     def post(self):
         request = event_parser.parse_args()
         f = request['file']
+        fenc = encrypt_file(f.read())
+        fenc = BytesIO(fenc)
         
         info = {}
         info['datetime'] = datetime.now(pytz.utc).isoformat()
         info['orgid'] = request['orgid']
-        try: info['fid'] = mongo.save_file(f.filename, f)
+        try: info['fid'] = mongo.save_file(f.filename, fenc)
         except pymongo.errors.ServerSelectionTimeoutError: return ({'message': 'Database down'}, 500)
+        
         info['processed'] = False
         info['typtag'] = request['typtag']
         info['timezone'] = request['timezone']

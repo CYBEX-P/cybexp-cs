@@ -11,22 +11,24 @@ def parsemain(lf, orgid, typtag, tzname):
     for line in lf:
         if typtag =='cowrie':
             [time_final, objects_val] = parse_cowrie(line)
-        if typtag == 'palo_alto_alert':
+        elif typtag == 'palo_alto_alert':
             [time_final, objects_val] = parse_palo_alto_alert(line, tzname)
-        if typtag == 'iptables':
+        elif typtag == 'iptables':
             [time_final, objects_val] = parse_iptables(line, tzname)
-        if typtag == 'unr-honeypot':
+        elif typtag == 'unr-honeypot':
             [time_final, objects_val] = parse_unr_honeypot(line, tzname)
-        if typtag == 'cuckoo-report':
+        elif typtag == 'cuckoo-report':
             [time_final, objects_val] = parse_cuckoo_report(line, tzname)
         else:
             print("Unknown file type (typtag): " + typtag)
+            import pdb
+            pdb.set_trace()
             continue
         try:
             observedDataRegKey = observed_data(time_final, orgid, objects_val)
         except:
             pass
-        bundle = stix2.Bundle(objects = [observedDataRegKey])
+##        bundle = stix2.Bundle(objects = [observedDataRegKey])
         json_val.append(json.loads(observedDataRegKey.serialize()))       
     return json_val 
 

@@ -1,6 +1,7 @@
 import json, requests
 from lomond import WebSocket
 from lomond.persist import persist
+from common import CybInp
 
 
 class WsInp(CybInp):
