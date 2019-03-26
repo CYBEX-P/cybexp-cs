@@ -24,7 +24,7 @@ nohup flask run --host=0.0.0.0 --port=5000 &
 2. Run Input Stream:
 
 cd ~/cybexp/input
-nohup python run.py &
+nohup python input.py &
 
 3. Run Archive Script
 cd ~/cybexp/proc/archive
