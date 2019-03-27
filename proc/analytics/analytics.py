@@ -2,6 +2,7 @@
 #
 from queue import Queue
 from filt_cowrie import filt_cowrie_2_ip
+from filt_cowrie import filt_cowrie_session_file_download_2_file_url
 
 def wait_10_mins():
     time.sleep(600)
@@ -17,6 +18,7 @@ def infinite_worker(q):
 
 q = Queue()
 q.put(filt_cowrie_2_ip)
+##q.put(filt_cowrie_session_file_download_2_file_url)
 
 infinite_worker(q)
 

@@ -71,7 +71,7 @@ def get_data_cursor(filt_id, *args, **kwargs):
         q = {"objects.0.data.eventid":eventid}
         query["$and"].append(q)
     
-    projection = {"_id" : 0, "filters" : 0}
+    projection = {"_id":0, "filters":0, "baddata":0}
     new_data = coll.find(query, projection)
     return new_data
 
@@ -89,12 +89,114 @@ def filt_cowrie_2_ip():
                {"id" : din_json["id"]},
                { "$push": { "filters": filt_id } }
             )
-    return True
+            return True
 
-def filt_cowrie_session_file_download_2_hash():
+def remove_dup_ip():
+    """ If two ipv4-addr objects have same value remove one,
+    replace all of its references"""
+    pass
+
+def cowrie_session_file_download_2_url(din_json):
+    global _ANALYTICS_ORGID
+
+    din_stix = stix2.parse(din_json, allow_custom = True)
+    try: 
+        value_val = din_stix["objects"]["0"]["data"]["url"]
+    except KeyError:
+        return None, None
+
+    time_final = din_stix["first_observed"]
+    orgid = _ANALYTICS_ORGID
+    objects_val = {
+                    "0" : {
+                      "type" : "url",
+                      "value" : value_val
+                    }
+                  }
+    ovd = observed_data(time_final, orgid, objects_val)
+    rel = stix2.Relationship(source_ref = ovd,
+                             relationship_type = 'filtered-from',
+                             target_ref = din_stix )
+    return ovd, rel    
+
+def cowrie_session_file_download_2_file(din_json):
+    global _ANALYTICS_ORGID
+
+    din_stix = stix2.parse(din_json, allow_custom = True)
+    try: 
+        SHA_256_val = din_stix["objects"]["0"]["data"]["shasum"]
+    except KeyError:
+        return None, None
+    url = din_stix["objects"]["0"]["data"]["url"]
+    name_val = url.split('/')[-1]
+    
+    time_final = din_stix["first_observed"]
+    orgid = _ANALYTICS_ORGID
+    objects_val = {
+                      "0": {
+                        "type": "file",
+                        "hashes": {
+                          "SHA-256": SHA_256_val
+                        },
+                        "name": name_val
+                      }
+                    }
+    ovd = observed_data(time_final, orgid, objects_val)
+    rel = stix2.Relationship(source_ref = ovd,
+                             relationship_type = 'filtered-from',
+                             target_ref = din_stix )
+    return ovd, rel
+def relate_object_2_ip(ovd, rel):
+    """ what if ip relation not exists"""
+    
+    target_ref = rel["target_ref"]
+    all_rels = coll.find({"target_ref" : target_ref})
+    for ip_rel in all_rels:
+        source_ref = ip_rel["source_ref"]
+        query = {
+            "$and" : [
+                {"id" : source_ref},
+                {"objects.0.type":"ipv4-addr"}
+            ]
+        }        
+        ipv4_obj = coll.find_one(query)
+        if ipv4_obj: break
+    reloi = stix2.Relationship(source_ref = ipv4_obj["id"],
+                               relationship_type = "related-to",
+                               target_ref = ovd)
+            
+    return reloi
+
+def filt_cowrie_session_file_download_2_file_url():
     filt_id = "filter--cb490786-19da-4f7b-b919-a33c4610349c"
     eventid = "cowrie.session.file_download"    
     new_data = get_data_cursor(filt_id, eventid=eventid)
+    for din_json in new_data:
+        k = din_json['objects']['0']['data'].keys()
+        if 'shasum' not in k or 'url' not in k:
+            i2 = coll.update_one(
+               {"id" : din_json["id"]},
+               { "$set": { "baddata": True } }
+            )
+            continue
+        ovdu, reluo = cowrie_session_file_download_2_url(din_json)
+        ovdf, relfo = cowrie_session_file_download_2_file(din_json)
+        if None in (ovdu, ovdf): return None
+
+        reluf = stix2.Relationship(source_ref = ovdu,
+                                  relationship_type = 'downloads',
+                                  target_ref = ovdf)
+
+        reliu = relate_object_2_ip(ovdu, reluo)
+        relif = relate_object_2_ip(ovdf, relfo)
+        i1 = coll.insert_many([dict(ovdu), dict(reluo),
+                          dict(ovdf), dict(relfo),
+                          dict(reluf), dict(reliu), dict(relif)])
+        i2 = coll.update_one(
+           {"id" : din_json["id"]},
+           { "$push": { "filters": filt_id } }
+        )
+        
 
 
 
@@ -111,5 +213,4 @@ def filt_cowrie_session_file_download_2_hash():
 ##            print(eid)
 ##            eids.append(eid)
               
-
-
+        
