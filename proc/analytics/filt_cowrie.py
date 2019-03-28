@@ -2,215 +2,170 @@ import sys
 sys.path.append("..")
 from common.loaddb import loaddb
 from common.schema.stix2ext import *
-import stix2
+import stix2, json, time
 from pprint import pprint
-import time
 
 db = loaddb('archive')
 coll = db.events
 
-_ANALYTICS_ORGID = "63476b91-c478-42b6-a554-a32b02836dc0"
+_ANALYTICS_ORGID = "identity--63476b91-c478-42b6-a554-a32b02836dc0"
 _EIDS = ['cowrie.direct-tcpip.request', 'cowrie.login.failed', 'cowrie.session.closed', 'cowrie.client.kex', 'cowrie.client.version', 'cowrie.session.connect', 'cowrie.login.success', 'cowrie.direct-tcpip.data', 'cowrie.command.input', 'cowrie.command.success', 'cowrie.command.failed', 'cowrie.session.file_download', 'cowrie.log.closed', 'cowrie.session.params', 'cowrie.session.file_download.failed', 'cowrie.client.size', 'cowrie.client.var']
-    
-def observed_data(time_final, orgid, objects_val):  
-    import uuid
-    
-    oid_val = "observed-data--" + str(uuid.uuid4())
-    
-    first_observed_val = time_final
-    last_observed_val = first_observed_val
-    number_observed_val = 1
-    created_by_ref_val = "identity--" + str(orgid)
-    
-    observedDataRegKey = stix2.ObservedData(
-        id = oid_val,
-        first_observed = first_observed_val,
-        last_observed = last_observed_val,
-        number_observed = number_observed_val,
-        created_by_ref = created_by_ref_val,
-        objects = objects_val,
-        allow_custom = True
-    )
+_QLIM = 100
+_PROJECTION = {"_id":0, "filters":0, "bad_data":0}
 
-    return observedDataRegKey
-
-
-def cowrie_2_ip(din_json):
-    global _ANALYTICS_ORGID
-
-    din_stix = stix2.parse(din_json, allow_custom = True)
-    try: 
-        value_val = din_stix["objects"]["0"]["data"]["src_ip"]
-    except KeyError:
-        return None, None
-
-    time_final = din_stix["first_observed"]
-    orgid = _ANALYTICS_ORGID
-    objects_val = {
-                    "0" : {
-                      "type" : "ipv4-addr",
-                      "value" : value_val
-                    }
-                  }
-    ovd = observed_data(time_final, orgid, objects_val)
-    rel = stix2.Relationship(source_ref = ovd,
-                             relationship_type = 'filtered-from',
-                             target_ref = din_stix )
-    return ovd, rel
-
-def get_data_cursor(filt_id, *args, **kwargs):
-    query = {
-        "$and" : [
-            {"objects.0.type" : "x-unr-honeypot"},
-            {"filters" : { "$ne": filt_id }}
-        ]
-    }
-    
+def get_new_data(filt_id, *args, **kwargs):
+##    {"objects.0.type" : "x-unr-honeypot"}
+##    {"$ne" : {"bad_data" : True}}
+   
     eventid = kwargs.pop('eventid', None)
-    if eventid:
-        q = {"objects.0.data.eventid":eventid}
-        query["$and"].append(q)
+    query = {"$and":[{"filters" : { "$ne": filt_id }}]}
+    if eventid: q = {"objects.0.data.eventid" : eventid}
+    else: q = { "objects.0.data.eventid" : {"$exists":True}}
+    query["$and"].append(q)
+    projection = {"_id":0, "filters":0, "bad_data":0}
     
-    projection = {"_id":0, "filters":0, "baddata":0}
-    new_data = coll.find(query, projection)
+    new_data = coll.find_one(query, projection)
     return new_data
 
-def filt_cowrie_2_ip():
-    filt_id = "filter--cd8b9c32-68ba-4403-82c5-df48e0fdde38"
-    new_data = get_data_cursor(filt_id)
     
-    if new_data.count() == 0 : return False
+def valid_cowrie_data(din_json, req_keys):
+    if not din_json: return None
+
+    dat_keys = din_json['objects']['0']['data'].keys()
+    for k in req_keys:
+        if k not in dat_keys: 
+            coll.update_one({"id" : din_json["id"]}, {"$set": {"bad_data": True} })
+            return False
+    return True
+
+
+##val = {'array' : [1 ,2 ,3],
+##    'objects': {'0': {'type': 'ipv4-addr', 'value': '157.230.114.93'}}}
+##print(json_2_query_list(val))
+def json_2_query_list(val, old = ""):
+    dota = []
+    if isinstance(val, dict):
+        for k in val.keys():
+            dota += json_2_query_list(val[k], old + str(k) + ".")
+    elif isinstance(val, list):
+        for k in val:
+            dota += json_2_query_list(k, old  )
+    else: dota = [{old[:-1] : val}]
+    return dota
+        
+
+def duplicate(obj):
+    match_keys = ['type', 'objects', 'source_ref', 'target_ref']
+
+    obj = json.loads(obj.serialize())
+
+    rem_keys = [k for k in obj.keys() if k not in match_keys]
+    for k in rem_keys: obj.pop(k)
+
+    query = {"$and" : json_2_query_list(obj)}
+    return coll.find_one(query, _PROJECTION)
+
+def observed_data(*args, **kwargs):
+    _type = kwargs['_type']
+    objects = {"0":{"type":_type}}
+    if _type == 'ipv4-addr': objects['0']['value'] = kwargs['ip']
+    if _type == 'url': objects['0']['value'] = kwargs['url']
+    if _type == 'file':
+        objects['0']['hashes'] = {"SHA-256" : kwargs['sha256']}
+        objects['0']['name'] = kwargs['name']
+
+    time_observed = kwargs['time']
+    obj = stix2.ObservedData(
+        first_observed = time_observed,
+        last_observed = time_observed,
+        number_observed = 1,
+        created_by_ref = _ANALYTICS_ORGID,
+        objects = objects,
+    )
+
+    dup = duplicate(obj)
+    if dup: return stix2.parse(dup)
     
-    for din_json in new_data:
-        ovd, rel = cowrie_2_ip(din_json)
-        if ovd:
-            i1 = coll.insert([dict(ovd), dict(rel)])
-            i2 = coll.update(
-               {"id" : din_json["id"]},
-               { "$push": { "filters": filt_id } }
-            )
-            return True
-
-def remove_dup_ip():
-    """ If two ipv4-addr objects have same value remove one,
-    replace all of its references"""
-    pass
-
-def cowrie_session_file_download_2_url(din_json):
-    global _ANALYTICS_ORGID
-
-    din_stix = stix2.parse(din_json, allow_custom = True)
-    try: 
-        value_val = din_stix["objects"]["0"]["data"]["url"]
-    except KeyError:
-        return None, None
-
-    time_final = din_stix["first_observed"]
-    orgid = _ANALYTICS_ORGID
-    objects_val = {
-                    "0" : {
-                      "type" : "url",
-                      "value" : value_val
-                    }
-                  }
-    ovd = observed_data(time_final, orgid, objects_val)
-    rel = stix2.Relationship(source_ref = ovd,
-                             relationship_type = 'filtered-from',
-                             target_ref = din_stix )
-    return ovd, rel    
-
-def cowrie_session_file_download_2_file(din_json):
-    global _ANALYTICS_ORGID
-
-    din_stix = stix2.parse(din_json, allow_custom = True)
-    try: 
-        SHA_256_val = din_stix["objects"]["0"]["data"]["shasum"]
-    except KeyError:
-        return None, None
-    url = din_stix["objects"]["0"]["data"]["url"]
-    name_val = url.split('/')[-1]
+    return obj
+   
+def filt_cowrie_session_file_download():
     
-    time_final = din_stix["first_observed"]
-    orgid = _ANALYTICS_ORGID
-    objects_val = {
-                      "0": {
-                        "type": "file",
-                        "hashes": {
-                          "SHA-256": SHA_256_val
-                        },
-                        "name": name_val
-                      }
-                    }
-    ovd = observed_data(time_final, orgid, objects_val)
-    rel = stix2.Relationship(source_ref = ovd,
-                             relationship_type = 'filtered-from',
-                             target_ref = din_stix )
-    return ovd, rel
-def relate_object_2_ip(ovd, rel):
-    """ what if ip relation not exists"""
+    _t1 = time.time() # 1 ======================
     
-    target_ref = rel["target_ref"]
-    all_rels = coll.find({"target_ref" : target_ref})
-    for ip_rel in all_rels:
-        source_ref = ip_rel["source_ref"]
-        query = {
-            "$and" : [
-                {"id" : source_ref},
-                {"objects.0.type":"ipv4-addr"}
-            ]
-        }        
-        ipv4_obj = coll.find_one(query)
-        if ipv4_obj: break
-    reloi = stix2.Relationship(source_ref = ipv4_obj["id"],
-                               relationship_type = "related-to",
-                               target_ref = ovd)
-            
-    return reloi
-
-def filt_cowrie_session_file_download_2_file_url():
     filt_id = "filter--cb490786-19da-4f7b-b919-a33c4610349c"
-    eventid = "cowrie.session.file_download"    
-    new_data = get_data_cursor(filt_id, eventid=eventid)
-    for din_json in new_data:
-        k = din_json['objects']['0']['data'].keys()
-        if 'shasum' not in k or 'url' not in k:
-            i2 = coll.update_one(
-               {"id" : din_json["id"]},
-               { "$set": { "baddata": True } }
-            )
-            continue
-        ovdu, reluo = cowrie_session_file_download_2_url(din_json)
-        ovdf, relfo = cowrie_session_file_download_2_file(din_json)
-        if None in (ovdu, ovdf): return None
+    eventid = "cowrie.session.file_download"
 
-        reluf = stix2.Relationship(source_ref = ovdu,
-                                  relationship_type = 'downloads',
-                                  target_ref = ovdf)
+    _t2 = time.time() # 2 ======================
+    
+    din_json = get_new_data(filt_id, eventid = eventid)
 
-        reliu = relate_object_2_ip(ovdu, reluo)
-        relif = relate_object_2_ip(ovdf, relfo)
-        i1 = coll.insert_many([dict(ovdu), dict(reluo),
-                          dict(ovdf), dict(relfo),
-                          dict(reluf), dict(reliu), dict(relif)])
-        i2 = coll.update_one(
-           {"id" : din_json["id"]},
-           { "$push": { "filters": filt_id } }
-        )
+    _t3 = time.time() # 3 ======================
+    
+    req_keys = ['src_ip','shasum','url']
+    v = valid_cowrie_data(din_json, req_keys)
+    if not v: return v
+
+    _t4 = time.time() # 4 ======================
+    
+    time_o = din_json["first_observed"]
+    data = din_json["objects"]["0"]["data"]
+    ip, sha256, url = data["src_ip"], data["shasum"], data["url"]
+    fname = url.split('/')[-1]
+
+    
+    _t5 = time.time() # 5 ======================
+    
+    i_obj = observed_data(_type='ipv4-addr', ip = ip, time = time_o)
+    u_obj = observed_data(_type='url', url = url, time = time_o)
+    f_obj = observed_data(_type='file', sha256=sha256, name = fname, time = time_o)
+    c_obj = stix2.parse(din_json, allow_custom = True)
+
+    _t6 = time.time() # 6 ======================
+    
+    r_i_c = stix2.Relationship(i_obj, 'filtered-from', c_obj)
+    r_u_c = stix2.Relationship(u_obj, 'filtered-from', c_obj)
+    r_f_c = stix2.Relationship(f_obj, 'filtered-from', c_obj)
+    r_i_u = stix2.Relationship(i_obj, 'related-to', u_obj)
+    r_i_f = stix2.Relationship(i_obj, 'related-to', f_obj)
+    r_u_f = stix2.Relationship(u_obj, 'downloads', f_obj)
+
+    _t7 = time.time() # 7 ======================
+    
+    json_obj = []
+    for obj in [i_obj, u_obj, f_obj, c_obj, r_i_c, r_u_c, r_f_c, r_i_u, r_i_f, r_u_f]:
+        if not duplicate(obj): 
+            json_obj.append(json.loads(obj.serialize()))
+
+    _t8 = time.time() # 8 ======================
+                
+    coll.update_one( {"id" : din_json["id"]}, {"$push": {"filters": filt_id} })
+
+    _t9 = time.time() # 9 ====================
         
+    r = coll.insert_many(json_obj)
 
+    _t10 = time.time() # 10 ======================
 
+    t =  [_t1, _t2, _t3, _t4, _t5, _t6, _t7, _t8, _t9, _t10]
+    td = []
+    for i in range(1,len(t)):
+        td.append(t[i] - t[i-1])
+    td = [round(x,2) for x in td]
+##    for i in range(len(td)) : print(i+1, i+2, '  ', td[i])
+##    
+##    
+##    import pdb
+##    pdb.set_trace()
 
+    return r
+    
 
+##def clear_all_processed_data():
+##    coll.delete_many({"objects.0.type":"ipv4-addr"})
+##    coll.delete_many({"objects.0.type":"file"})
+##    coll.delete_many({"objects.0.type":"url"})
+##    coll.delete_many({"type":"relationship"})
+##    coll.update({}, {"$unset": {"filters":1}} , {"multi": True});
+##        
+filt_cowrie_session_file_download()
 
-##all_data = coll.find({"objects.0.type" : "x-unr-honeypot"},
-##                     {"_id" : 0, "filters" : 0})
-##
-##eids = []
-##for e in all_data:
-##    if "eventid" in e["objects"]["0"]["data"].keys():
-##        eid = e["objects"]["0"]["data"]["eventid"]
-##        if eid not in eids:
-##            print(eid)
-##            eids.append(eid)
-              
-        
