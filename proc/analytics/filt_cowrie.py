@@ -13,18 +13,13 @@ _EIDS = ['cowrie.direct-tcpip.request', 'cowrie.login.failed', 'cowrie.session.c
 _QLIM = 100
 _PROJECTION = {"_id":0, "filters":0, "bad_data":0}
 
-def get_new_data(filt_id, *args, **kwargs):
-##    {"objects.0.type" : "x-unr-honeypot"}
-##    {"$ne" : {"bad_data" : True}}
-   
+def get_new_data(filt_id, *args, **kwargs):    
+    query = {"$and":[{"objects.0.type" : "x-unr-honeypot"}, {"bad_data" : { "$ne": True}}, {"filters" : { "$ne": filt_id }}, { "objects.0.data.eventid" : {"$exists":True}}]}
+
     eventid = kwargs.pop('eventid', None)
-    query = {"$and":[{"filters" : { "$ne": filt_id }}]}
-    if eventid: q = {"objects.0.data.eventid" : eventid}
-    else: q = { "objects.0.data.eventid" : {"$exists":True}}
-    query["$and"].append(q)
-    projection = {"_id":0, "filters":0, "bad_data":0}
+    if eventid: query["$and"].append({"objects.0.data.eventid" : eventid})
     
-    new_data = coll.find_one(query, projection)
+    new_data = coll.find_one(query, _PROJECTION)
     return new_data
 
     
@@ -38,21 +33,16 @@ def valid_cowrie_data(din_json, req_keys):
             return False
     return True
 
-
-##val = {'array' : [1 ,2 ,3],
-##    'objects': {'0': {'type': 'ipv4-addr', 'value': '157.230.114.93'}}}
-##print(json_2_query_list(val))
 def json_2_query_list(val, old = ""):
     dota = []
     if isinstance(val, dict):
         for k in val.keys():
             dota += json_2_query_list(val[k], old + str(k) + ".")
-    elif isinstance(val, list):
-        for k in val:
-            dota += json_2_query_list(k, old  )
+##    elif isinstance(val, list):
+##        for k in val:
+##            dota += json_2_query_list(k, old  )
     else: dota = [{old[:-1] : val}]
-    return dota
-        
+    return dota  
 
 def duplicate(obj):
     match_keys = ['type', 'objects', 'source_ref', 'target_ref']
@@ -75,52 +65,33 @@ def observed_data(*args, **kwargs):
         objects['0']['name'] = kwargs['name']
 
     time_observed = kwargs['time']
-    obj = stix2.ObservedData(
-        first_observed = time_observed,
-        last_observed = time_observed,
-        number_observed = 1,
-        created_by_ref = _ANALYTICS_ORGID,
-        objects = objects,
-    )
+    obj = stix2.ObservedData(first_observed = time_observed,
+        last_observed = time_observed, number_observed = 1,
+        created_by_ref = _ANALYTICS_ORGID, objects = objects)
 
     dup = duplicate(obj)
     if dup: return stix2.parse(dup)
-    
     return obj
    
 def filt_cowrie_session_file_download():
-    
-    _t1 = time.time() # 1 ======================
-    
     filt_id = "filter--cb490786-19da-4f7b-b919-a33c4610349c"
     eventid = "cowrie.session.file_download"
 
-    _t2 = time.time() # 2 ======================
-    
     din_json = get_new_data(filt_id, eventid = eventid)
 
-    _t3 = time.time() # 3 ======================
-    
     req_keys = ['src_ip','shasum','url']
     v = valid_cowrie_data(din_json, req_keys)
     if not v: return v
-
-    _t4 = time.time() # 4 ======================
     
     time_o = din_json["first_observed"]
     data = din_json["objects"]["0"]["data"]
     ip, sha256, url = data["src_ip"], data["shasum"], data["url"]
     fname = url.split('/')[-1]
-
-    
-    _t5 = time.time() # 5 ======================
     
     i_obj = observed_data(_type='ipv4-addr', ip = ip, time = time_o)
     u_obj = observed_data(_type='url', url = url, time = time_o)
     f_obj = observed_data(_type='file', sha256=sha256, name = fname, time = time_o)
     c_obj = stix2.parse(din_json, allow_custom = True)
-
-    _t6 = time.time() # 6 ======================
     
     r_i_c = stix2.Relationship(i_obj, 'filtered-from', c_obj)
     r_u_c = stix2.Relationship(u_obj, 'filtered-from', c_obj)
@@ -129,36 +100,18 @@ def filt_cowrie_session_file_download():
     r_i_f = stix2.Relationship(i_obj, 'related-to', f_obj)
     r_u_f = stix2.Relationship(u_obj, 'downloads', f_obj)
 
-    _t7 = time.time() # 7 ======================
-    
     json_obj = []
     for obj in [i_obj, u_obj, f_obj, c_obj, r_i_c, r_u_c, r_f_c, r_i_u, r_i_f, r_u_f]:
         if not duplicate(obj): 
             json_obj.append(json.loads(obj.serialize()))
-
-    _t8 = time.time() # 8 ======================
-                
+    import pdb
+    pdb.set_trace()
+    r = coll.insert_many(json_obj)    
     coll.update_one( {"id" : din_json["id"]}, {"$push": {"filters": filt_id} })
-
-    _t9 = time.time() # 9 ====================
-        
-    r = coll.insert_many(json_obj)
-
-    _t10 = time.time() # 10 ======================
-
-    t =  [_t1, _t2, _t3, _t4, _t5, _t6, _t7, _t8, _t9, _t10]
-    td = []
-    for i in range(1,len(t)):
-        td.append(t[i] - t[i-1])
-    td = [round(x,2) for x in td]
-##    for i in range(len(td)) : print(i+1, i+2, '  ', td[i])
-##    
-##    
-##    import pdb
-##    pdb.set_trace()
-
-    return r
     
+    return r
+
+print(filt_cowrie_session_file_download().inserted_ids)
 
 ##def clear_all_processed_data():
 ##    coll.delete_many({"objects.0.type":"ipv4-addr"})
@@ -166,6 +119,66 @@ def filt_cowrie_session_file_download():
 ##    coll.delete_many({"objects.0.type":"url"})
 ##    coll.delete_many({"type":"relationship"})
 ##    coll.update({}, {"$unset": {"filters":1}} , {"multi": True});
-##        
-filt_cowrie_session_file_download()
+##
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####### 1 ###############
+
+##q = {"$and" : [ {"type" : "observed-data"} , { "objects.0.type" : {"$ne" : "x-unr-honeypot"} } ]}
+##r = coll.find(q)
+##all_typs = {}
+##for e in r:
+##    typ = e["objects"]["0"]["type"]
+##    if typ in all_typs.keys():
+##        all_typs[typ] += 1
+##    else:
+##        all_typs[typ] = 1
+##print(all_typs)
+
+
+
+########### 2 ##################
+##q = {"$and" : [{"type" : "observed-data"}, {"created": {"$regex": '2019-03-29.*'}}]}
+##q = {"$and" : [{"created": {"$regex": '2019-03-29.*'}}, {"objects.0.type" : "x-unr-honeypot"} ]}
+##r = coll.find(q)
+##all_eids = {}
+##others = 0
+##for e in r:
+##    try:
+##        eid = e["objects"]["0"]["data"]["eventid"]
+##        if eid in all_eids.keys():
+##            all_eids[eid] += 1
+##        else:
+##            all_eids[eid] = 1
+##    except:
+##        others += 1
+##
+##total = sum(all_eids.values()) + others
+##
+##import operator
+##all_eids = sorted(all_eids.items(), reverse=True,
+##                  key=operator.itemgetter(1))
+##all_eids.append(('OTHERS', others))
+##all_eids.append(('TOTAL', total))
+##
+##
+##
+##for k,v in all_eids:
+##    print(k, ' : ', v)            
 
