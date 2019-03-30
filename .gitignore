@@ -1,5 +1,9 @@
 # ===== MY ================
-\proc\analytics\start.bat
+proc/analytics/start.bat
+*.ini
+crypto test/
+Rubbish/
+input/TEMP/
 
 # ==================================
 # BOILERPLATE
