@@ -25,6 +25,9 @@ class UserRegistration(Resource):
                 return {'message': 'orgid is not a valid UUID4'}, 422
         else:
             orgid = str(uuid4())
+
+        isadmin = data['isadmin']
+        if not isadmin : isadmin = False
         
         new_user = UserModel(
             username = data['username'],
@@ -70,6 +73,8 @@ class UserLogoutAccess(Resource):
     @jwt_required
     def post(self):
         jti = get_raw_jwt()['jti']
+        import pdb
+        pdb.set_trace()
         try:
             revoked_token = RevokedTokenModel(jti = jti)
             revoked_token.add()

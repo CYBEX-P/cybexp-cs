@@ -1,14 +1,17 @@
+import sys
+sys.path.append("..")
+
 from flask_restful import Resource, reqparse
-import werkzeug, pytz, pymongo
+import werkzeug, pytz, pymongo, stix2, json
 from datetime import datetime
 from flask_jwt_extended import jwt_required
 from run import mongo
-from crypto import encrypt_file
-import pdb
 from io import BytesIO
-import json
-from bson import json_util
-from flask import jsonify
+
+from crypto import encrypt_file
+from common.stix2ext import *
+
+
 
 # Post Events to API
 event_parser = reqparse.RequestParser()
@@ -51,7 +54,7 @@ rep_db = rep_client.archive_db
 rep_coll = rep_db.events
 
 def get_ipv4_related(ipv4_addr):
-    result = {}
+    result_bundle = []
     
     # Find matching ipv4-addr object
     query = {
@@ -63,44 +66,37 @@ def get_ipv4_related(ipv4_addr):
     projection = {"_id":0, "filters":0, "bad_data":0}
     ipobj = rep_coll.find_one(query, projection)
     if not ipobj: return None
-    result["0"] = ipobj
+    
+    ipobj = stix2.parse(ipobj, allow_custom=True)
+    result_bundle.append(ipobj)
 
     # Find all relations
-    query = {
-        "$and" : [
-            {"type" : "relationship"},
-            {
-                "$or" : [
-                    {"source_ref" : ipobj["id"]},
-                    {"target_ref" : ipobj["id"]}
-                ]
-            },
-            {"relationship_type" : {"$ne" : "filtered-from"}}
-        ]
-    }
+    query = {"$and" : [{"$or" : [{"source_ref" : ipobj["id"]},{"target_ref" : ipobj["id"]}]},
+            {"type" : "relationship"}, {"relationship_type" : {"$ne" : "filtered-from"}}]}
     projection = {"_id":0, "filters":0, "baddata":0}
     all_rels = rep_coll.find(query, projection)
 
     # Find all related objects
-    count = 1
     for rel in all_rels:
-        result[str(count)] = rel
-        count += 1
         if rel["source_ref"] == ipobj["id"] :
             objid = rel["target_ref"]
         else: objid = rel["source_ref"]
         query = {"id" : objid}
         projection = {"_id":0, "filters":0, "badrdata":0}
         rel_obj = rep_coll.find_one(query, projection)
-        result[str(count)] = rel_obj
-        count += 1
+
+        relation_obj = stix2.parse(rel)
+        related_obj = stix2.parse(rel_obj, allow_custom = True)
+        result_bundle.extend((relation_obj, related_obj))
+
+    result_bundle = stix2.Bundle(result_bundle)
+    return json.loads(result_bundle.serialize())
         
-    return result
 
 class Related(Resource):
     decorators = []
-      
-##    @jwt_required
+    
+    @jwt_required
     def post(self):
         response = {}
         req = related_parser.parse_args()

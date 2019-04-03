@@ -13,20 +13,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'my-secret-string'
 app.config["MONGO_URI"] = "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/cache_db?authSource=admin"
 app.config["MONGO_DBNAME"] = "cache_db"
+app.config['JWT_SECRET_KEY'] = 'jwt-secret-string'
+app.config['JWT_BLACKLIST_ENABLED'] = True
+app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 
 mongo = PyMongo(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+jwt = JWTManager(app)
 
 @app.before_first_request
 def create_tables():
     db.create_all()
 
-app.config['JWT_SECRET_KEY'] = 'jwt-secret-string'
-jwt = JWTManager(app)
 
-app.config['JWT_BLACKLIST_ENABLED'] = True
-app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
+
 
 @jwt.token_in_blacklist_loader
 def check_if_token_in_blacklist(decrypted_token):

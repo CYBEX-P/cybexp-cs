@@ -1,7 +1,10 @@
 # ===== MY ================
-proc/analytics/start.bat
+*.bat
+# proc/analytics/start.bat
+*playpen.py
+#proc/analytics/playpen.py
+#input/playpen.py
 *.ini
-crypto test/
 Rubbish/
 input/TEMP/
 

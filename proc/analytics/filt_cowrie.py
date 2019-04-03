@@ -111,15 +111,6 @@ def filt_cowrie_session_file_download():
     
     return r
 
-print(filt_cowrie_session_file_download().inserted_ids)
-
-##def clear_all_processed_data():
-##    coll.delete_many({"objects.0.type":"ipv4-addr"})
-##    coll.delete_many({"objects.0.type":"file"})
-##    coll.delete_many({"objects.0.type":"url"})
-##    coll.delete_many({"type":"relationship"})
-##    coll.update({}, {"$unset": {"filters":1}} , {"multi": True});
-##
 
 
 
@@ -138,47 +129,4 @@ print(filt_cowrie_session_file_download().inserted_ids)
 
 
 
-####### 1 ###############
-
-##q = {"$and" : [ {"type" : "observed-data"} , { "objects.0.type" : {"$ne" : "x-unr-honeypot"} } ]}
-##r = coll.find(q)
-##all_typs = {}
-##for e in r:
-##    typ = e["objects"]["0"]["type"]
-##    if typ in all_typs.keys():
-##        all_typs[typ] += 1
-##    else:
-##        all_typs[typ] = 1
-##print(all_typs)
-
-
-
-########### 2 ##################
-##q = {"$and" : [{"type" : "observed-data"}, {"created": {"$regex": '2019-03-29.*'}}]}
-##q = {"$and" : [{"created": {"$regex": '2019-03-29.*'}}, {"objects.0.type" : "x-unr-honeypot"} ]}
-##r = coll.find(q)
-##all_eids = {}
-##others = 0
-##for e in r:
-##    try:
-##        eid = e["objects"]["0"]["data"]["eventid"]
-##        if eid in all_eids.keys():
-##            all_eids[eid] += 1
-##        else:
-##            all_eids[eid] = 1
-##    except:
-##        others += 1
-##
-##total = sum(all_eids.values()) + others
-##
-##import operator
-##all_eids = sorted(all_eids.items(), reverse=True,
-##                  key=operator.itemgetter(1))
-##all_eids.append(('OTHERS', others))
-##all_eids.append(('TOTAL', total))
-##
-##
-##
-##for k,v in all_eids:
-##    print(k, ' : ', v)            
 
