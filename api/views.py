@@ -11,6 +11,7 @@ from io import BytesIO
 from crypto import encrypt_file
 from common.stix2ext import *
 
+_REPORT_ORGID = "identity--7f60ac36-74dd-4c23-bc31-3226533d93d2"
 
 
 # Post Events to API
@@ -107,4 +108,69 @@ class Related(Resource):
                 return ({'message': 'IP Address Not Found'}, 200)
 
         return (r, 200)
+
+
+def get_ip_count(ip, from_datetime = None, to_datetime = None, tzname = None):
+    query = {"$and" : [{"objects.0.value" : ip}]}
+    
+    utc = pytz.utc
+    if not tzname: tzname = 'UTC'
+    try: tz = pytz.timezone(tzname)
+    except UnknownTimeZoneError: return 'Unknown Timezone'
+
+    if from_datetime:
+        try: from_datetime = parse_time(from_datetime)
+        except ValueError: return 'Unknown fromtime'
+        from_datetime = tz.localize(from_datetime).astimezone(utc)
+        query["$and"].append({"x_first_observed": {"$gte": from_datetime}})
+
+    if not to_datetime: to_datetime = utc.localize(datetime.utcnow())
+    else:
+        try: to_datetime = parse_time(to_datetime)
+        except: return 'Unknown totime'
+        to_datetime = tz.localize(to_datetime).astimezone(utc)
+        try: query["$and"][1]["x_first_observed"]["$lte"] = to_datetime
+        except KeyError: query["$and"].append({"x_first_observed": {"$lte": to_datetime}})
+            
+    number_observed = analytics_coll.find(query, {"_id":1},
+        limit = 100000).count(with_limit_and_skip=True)
+    if number_observed == 0: return None
+    first_observed = analytics_coll.find_one(filter = query, sort=[("x_first_observed",
+                    pymongo.ASCENDING)])["first_observed"]
+    last_observed = analytics_coll.find_one(filter = query, sort=[("x_first_observed",
+                    pymongo.DESCENDING)])["last_observed"]
+
+    objects = {"0":{"type": "ipv4-addr", "value" : ip}}
+    ip_obj = stix2.ObservedData(first_observed = first_observed,
+        last_observed = last_observed, number_observed = number_observed,
+        created_by_ref = _REPORT_ORGID, objects = objects)
+
+    result_bundle = stix2.Bundle([ip_obj])
+    return json.loads(result_bundle.serialize())
+
+count_parser = reqparse.RequestParser()
+count_parser.add_argument('ipv4-addr', type=str)
+count_parser.add_argument('from', type=str)
+count_parser.add_argument('to', type=str)
+count_parser.add_argument('timezone', type=str)
+analytics_coll = rep_db.analytics
+class Count(Resource):
+    decorators = []
+
+    @jwt_required
+    def post(self):
+        req = count_parser.parse_args()
+        ip = req['ipv4-addr']
+        from_datetime = req['from']
+        to_datetime = req['to']
+        tzname = req['timezone']
+
+        r = get_ip_count(ip, from_datetime, to_datetime, tzname)
+        if not r:
+            return ({'message': 'IP Address Not Found'}, 200)
+
+        return (r, 200)
+        
+            
+    
         

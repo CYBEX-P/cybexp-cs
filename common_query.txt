@@ -1,0 +1,15 @@
+{"$and":[{"objects.0.type" : "x-unr-honeypot"}, {"filters" : { "$ne": "filter--cb490786-19da-4f7b-b919-a33c4610349c" }}, {"bad_data": { "$ne" : true}}, { "objects.0.data.eventid" : {"$exists":true}}]}
+
+{"$and":[{"filters" : { "$ne": "filter--cb490786-19da-4f7b-b919-a33c4610349c" }}, {"objects.0.data.eventid" : "cowrie.session.file_download"}]}
+
+{"$and":[{"objects.0.type" : "x-unr-honeypot"}, { "objects.0.data.eventid" : "filter--cb490786-19da-4f7b-b919-a33c4610349c"}, { "objects.0.data.eventid" : {"$exists":True}}]}
+{"$and":[{"objects.0.type" : "x-unr-honeypot"}, {"filters" : { "$ne": "filter--cb490786-19da-4f7b-b919-a33c4610349c" }}, { "objects.0.data.eventid" : {"$exists":true}}]}
+
+{"$and":[{"objects.0.data.eventid" : "cowrie.session.file_download"}]}
+
+db.getCollection('events').updateMany({},{"$pull" : {"filters" : "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"} })
+
+{"$and" : [{"objects.0.value" : "104.168.138.60"}, {"x_first_observed": {"$gte": ISODate("2019-04-1T00:00:00.000Z"),"$lte": ISODate("2019-04-04T00:00:00.000Z")}}]}
+
+
+{"objects.0.value" : "104.168.138.60"}

@@ -1,9 +1,6 @@
 # ===== MY ================
 *.bat
-# proc/analytics/start.bat
 *playpen.py
-#proc/analytics/playpen.py
-#input/playpen.py
 *.ini
 Rubbish/
 input/TEMP/
