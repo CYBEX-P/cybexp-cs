@@ -7,6 +7,8 @@ input/TEMP/
 
 # ==================================
 # BOILERPLATE
+# Data Files
+*.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
