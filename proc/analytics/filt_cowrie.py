@@ -9,6 +9,7 @@ from dateutil.parser import parse as parse_time
 db = loaddb('archive')
 coll = db.events
 rcoll = db.events
+acoll = db.analytis
 analytics_coll = db.analytics
 
 _ANALYTICS_ORGID = "identity--63476b91-c478-42b6-a554-a32b02836dc0"
@@ -113,29 +114,6 @@ def filt_cowrie_session_file_download():
     
     return r
 
-##def filt_cowrie_2_ip():
-##    filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
-##
-##    t1 = time.time()
-##    din_json = get_new_data(filt_id)
-##    t2 = time.time()
-##    
-##    req_keys = ['src_ip']
-##    v = valid_cowrie_data(din_json, req_keys)
-##    if not v: return v
-##        
-##    data = din_json["objects"]["0"]["data"]
-##    
-##    _time = din_json["first_observed"]
-##    ip = data["src_ip"]
-##    
-##    i_obj = observed_data(_type='ipv4-addr', ip = ip, _time = _time)
-##    json_obj = json.loads(i_obj.serialize())
-##    
-##    r = wcoll.insert_one(json_obj)    
-##    rcoll.update_one( {"id" : din_json["id"]}, {"$push": {"filters": filt_id} })
-##    return t2-t1
-
 def filt_cowrie_2_ip():
     filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
 
@@ -153,7 +131,6 @@ def filt_cowrie_2_ip():
         if "src_ip" not in data.keys():
             coll.update_one({"id" : din_json["id"]},
                             {"$set": {"bad_data": True} })
-        t2 = time.time()
 
         objects = {"0":{"type": "ipv4-addr", "value" : data["src_ip"]}}
         _time = din_json["first_observed"]
@@ -168,16 +145,40 @@ def filt_cowrie_2_ip():
         r = analytics_coll.insert_one(json_obj)    
         rcoll.update_one( {"id" : din_json["id"]}, {"$push": {"filters": filt_id} })
 
-        t += t2-t1
-        if count % 10000 == 0:
-            print(count, ' : ', t/10000)
-            t = 0
-        count += 1
-        t1 = time.time()
+    return True
 
-    return None
+def filt_cowrie_2_url():
+    filt_id = "filter--aa5273c9-6404-49de-ad5f-47dde5a08ab6"
 
+    query = {"$and":[{"objects.0.type" : "x-unr-honeypot"},
+                     {"bad_data" : { "$ne": True}},
+                     {"filters" : { "$ne": filt_id }},
+                     {"objects.0.data.url" : {"$exists":True}}]}
+    projection = {"id" : 1, "first_observed" : 1, "objects.0.data.url" : 1,}
+    r = rcoll.find(query, projection)
+    if not r: return None
+    
+    count,t, t1 = 0, 0, time.time()
+    for din_json in r:     
+        data = din_json["objects"]["0"]["data"]
+##        if "url" not in data.keys():
+##            rcoll.update_one( {"id" : din_json["id"]}, {"$push": {"filters": filt_id} })
+##            continue
 
+        objects = {"0":{"type": "url", "value" : data["url"]}}
+        _time = din_json["first_observed"]
+        
+        i_obj = stix2.ObservedData(first_observed = _time,
+            last_observed = _time, number_observed = 1,
+            created_by_ref = _ANALYTICS_ORGID, objects = objects)
+
+        json_obj = json.loads(i_obj.serialize())
+        json_obj["x_first_observed"] = parse_time(_time)
+
+        r = analytics_coll.insert_one(json_obj)    
+        rcoll.update_one( {"id" : din_json["id"]}, {"$push": {"filters": filt_id} })
+
+    return True
 
 
 

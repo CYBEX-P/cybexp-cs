@@ -9,7 +9,19 @@
 
 db.getCollection('events').updateMany({},{"$pull" : {"filters" : "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"} })
 
-{"$and" : [{"objects.0.value" : "104.168.138.60"}, {"x_first_observed": {"$gte": ISODate("2019-04-1T00:00:00.000Z"),"$lte": ISODate("2019-04-04T00:00:00.000Z")}}]}
+{"$and" : [{"objects.0.value" : "104.168.138.60"}, {"x_first_observed": {"$gte": ISODate("2019-03-01T00:00:00.000Z"),"$lte": ISODate("2019-04-04T00:00:00.000Z")}}]}
+ISODate("2012-12-19T06:01:17.171Z")
 
 
 {"objects.0.value" : "104.168.138.60"}
+
+
+.limit(10000).count( { "applySkipLimit": true })
+
+{"$and" : [{"objects.0.value" : "104.168.138.60"}, {"x_first_observed": {"$gte": ISODate("2019-03-01T00:00:00.000Z"),"$lte": ISODate("2019-04-04T00:00:00.000Z")}}]} 
+sort({"x_first_observed":1},{"_id" : 1}
+
+{"objects.0.type" : "ipv4-addr"}
+
+# Delete Filter ID
+filter--aa5273c9-6404-49de-ad5f-47dde5a08ab6

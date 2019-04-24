@@ -7,6 +7,7 @@ from datetime import datetime
 from flask_jwt_extended import jwt_required
 from run import mongo
 from io import BytesIO
+from dateutil.parser import parse as parse_time
 
 from crypto import encrypt_file
 from common.stix2ext import *
@@ -110,8 +111,8 @@ class Related(Resource):
         return (r, 200)
 
 
-def get_ip_count(ip, from_datetime = None, to_datetime = None, tzname = None):
-    query = {"$and" : [{"objects.0.value" : ip}]}
+def get_ip_url_count(ip_url_val, obj_type, from_datetime = None, to_datetime = None, tzname = None):
+    query = {"$and" : [{"objects.0.type":obj_type},{"objects.0.value" : ip_url_val}]}
     
     utc = pytz.utc
     if not tzname: tzname = 'UTC'
@@ -131,7 +132,7 @@ def get_ip_count(ip, from_datetime = None, to_datetime = None, tzname = None):
         to_datetime = tz.localize(to_datetime).astimezone(utc)
         try: query["$and"][1]["x_first_observed"]["$lte"] = to_datetime
         except KeyError: query["$and"].append({"x_first_observed": {"$lte": to_datetime}})
-            
+
     number_observed = analytics_coll.find(query, {"_id":1},
         limit = 100000).count(with_limit_and_skip=True)
     if number_observed == 0: return None
@@ -140,7 +141,7 @@ def get_ip_count(ip, from_datetime = None, to_datetime = None, tzname = None):
     last_observed = analytics_coll.find_one(filter = query, sort=[("x_first_observed",
                     pymongo.DESCENDING)])["last_observed"]
 
-    objects = {"0":{"type": "ipv4-addr", "value" : ip}}
+    objects = {"0":{"type": obj_type, "value" : ip_url_val}}
     ip_obj = stix2.ObservedData(first_observed = first_observed,
         last_observed = last_observed, number_observed = number_observed,
         created_by_ref = _REPORT_ORGID, objects = objects)
@@ -150,6 +151,7 @@ def get_ip_count(ip, from_datetime = None, to_datetime = None, tzname = None):
 
 count_parser = reqparse.RequestParser()
 count_parser.add_argument('ipv4-addr', type=str)
+count_parser.add_argument('url', type=str)
 count_parser.add_argument('from', type=str)
 count_parser.add_argument('to', type=str)
 count_parser.add_argument('timezone', type=str)
@@ -161,13 +163,15 @@ class Count(Resource):
     def post(self):
         req = count_parser.parse_args()
         ip = req['ipv4-addr']
+        url = req['url']
         from_datetime = req['from']
         to_datetime = req['to']
         tzname = req['timezone']
 
-        r = get_ip_count(ip, from_datetime, to_datetime, tzname)
-        if not r:
-            return ({'message': 'IP Address Not Found'}, 200)
+        if ip: r = get_ip_url_count(ip, 'ipv4-addr', from_datetime, to_datetime, tzname)
+        elif url: r = get_ip_url_count(url, 'url', from_datetime, to_datetime, tzname)
+        else: r = {'message': 'Please include either ipv4-addr or url'}
+        if not r: r = {'message': 'IP Address/URL Not Found'}
 
         return (r, 200)
         

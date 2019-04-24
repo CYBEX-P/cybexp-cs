@@ -36,3 +36,13 @@ nohup python archive.py &
 cd ~/cybexp/proc/analytics
 nohup python analytics.py &
 ```
+
+### API Debug
+```
+source ~/.bashrc
+workon cybexp
+cd ~/cybexp/api
+export FLASK_APP=run.py
+export FLASK_ENV=development
+flask run --host=0.0.0.0 --port=5000
+```

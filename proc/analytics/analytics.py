@@ -3,6 +3,7 @@
 from queue import Queue
 from filt_cowrie import filt_cowrie_session_file_download
 from filt_cowrie import filt_cowrie_2_ip
+from filt_cowrie import filt_cowrie_2_url
 import time
 
 def wait_10_mins():
@@ -15,14 +16,12 @@ def infinite_worker(q):
         try:
             r = func()
             if r == None:
-                print('-----------------------\n', time.time(), '\nData Exhausted')
-                return
+                time.sleep(300)
+                continue
 
         except Exception as exception:
             print('=======================')
             print(time.time())
-            import pdb
-            pdb.set_trace()
             print(exception)
             time.sleep(300)
 
@@ -32,8 +31,9 @@ def infinite_worker(q):
         
 
 q = Queue()
+q.put(filt_cowrie_2_url)
+q.put(filt_cowrie_session_file_download)
 q.put(filt_cowrie_2_ip)
-##q.put(filt_cowrie_session_file_download_2_file_url)
 
 infinite_worker(q)
 

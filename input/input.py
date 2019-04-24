@@ -1,8 +1,10 @@
 import logging
-import threading
 import time
 import requests
-
+import urllib.parse
+import threading
+from threading import Thread
+from multiprocessing import Process
 
 # Configure Logging
 logger = logging.getLogger('coll')
@@ -103,18 +105,53 @@ class WsInp(CybInp):
 with open('../config.json') as json_conf:
     conf = json.load(json_conf)
 
-wsi_lst = []
-for i in conf['input']:
-    if i['type'] == 'websocket-client':
-        wsi = WsInp(api_srv = api_srv,
-                    orgid = i['orgid'],
-                    typtag = i['typtag'],
-                    timezone = i['timezone'],
-                    uri = i['uri'])
-        wsi_lst.append(wsi)
+def ws_proc():
+    wsi_lst = []
+    for i in conf['input']:
+        if i['type'] == 'websocket-client':
+            wsi = WsInp(api_srv = api_srv,
+                        orgid = i['orgid'],
+                        typtag = i['typtag'],
+                        timezone = i['timezone'],
+                        uri = i['uri'])
+            wsi_lst.append(wsi)
 
-for wsi in wsi_lst:
-    wsi.run()
+    for wsi in wsi_lst:
+        wsi.run()
+
+
+
+# ====================================================
+# ================ API Input Plugin ==================
+# ====================================================
+
+# MISP Input API
+def api_proc():
+    url = urllib.parse.urljoin("https://ti-dev.soc.unr.edu", "/events/restSearch")
+    key = "eqyU15K4MByA9t89lkXlbrG559gYC5LkVnQcSXrS"
+    data = {
+        "returnFormat": "json",
+        "org": "CIRCL",
+        "withAttachments": "false"
+    }
+
+    output = requests.post(url, headers={'Authorization': key}, json=data)
+    out_text = output.text
+    import pdb
+    pdb.set_trace()
+
+
+
+# ====================================================
+# ================ Start All Threads =================
+# ====================================================
+
+ws_p = Thread(target=ws_proc)
+api_p = Thread(target=api_proc)
+
+ws_p.start()
+api_p.start()
+
 
 
 
