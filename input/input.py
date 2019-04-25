@@ -137,8 +137,7 @@ def api_proc():
 
     output = requests.post(url, headers={'Authorization': key}, json=data)
     out_text = output.text
-    import pdb
-    pdb.set_trace()
+    pass
 
 
 

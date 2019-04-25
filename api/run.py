@@ -1,9 +1,11 @@
+import sys
+sys.path.append("..")
+
 from flask import Flask
 from flask_restful import Api
-from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
-from flask_pymongo import PyMongo
 from flask_migrate import Migrate
+from database import db
 
 app = Flask(__name__)
 api = Api(app)
@@ -18,15 +20,13 @@ app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
 
-mongo = PyMongo(app)
-db = SQLAlchemy(app)
+db.init_app(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
 @app.before_first_request
 def create_tables():
     db.create_all()
-
 
 
 
