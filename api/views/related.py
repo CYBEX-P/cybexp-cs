@@ -45,6 +45,7 @@ def get_related(obj_typ, obj_val, **kwargs):
 
 rparser = reqparse.RequestParser()
 for va in _VALID_ATT: rparser.add_argument(va)
+for fa in _FUTURE_ATT: rparser.add_argument(fa)
 
 class Related(Report):
     def __init__(self):

@@ -31,6 +31,15 @@ builtins._VALID_ATT = {'ip' : 'ipv4-addr',
                        'file-hash' : 'file',
                        'file-sha256' : 'file',
                        'file-hash-sha256' : 'file'}
+builtins._FUTURE_ATT = {'port' : 'port',
+                        'btc' : 'btc',
+                        'BTC' : 'btc',
+                        'autonomous-system' : 'autonomous-system',
+                        'AS' : 'autonomous-system',
+                        'BGP' : 'bgp-path',
+                        'bgp-path' : 'bgp-path',
+                        'ssid' : 'ssid',
+                        'comment' : 'comment'}
 
 # Classes
 class Report(Resource):
@@ -48,11 +57,21 @@ class Report(Resource):
         self.request = req_parser.parse_args()
         request_keys = [ k for k in self.request.keys() if self.request[k]]
         valid_keys = _VALID_ATT.keys()
+        future_keys = _FUTURE_ATT.keys()
 
+        future_att = set(request_keys).intersection(future_keys)
         valid_att = set(request_keys).intersection(valid_keys)
-        count = len(valid_att)
+        count = len(valid_att) + len(future_att)
+
+        message = None
         if count < 1:  message, self.status_code = 'Input valid attribute object, check spelling', 400
         elif count > 1: message, self.status_code = 'Input one attribute object at a time', 400
+        elif future_att:
+            obj_typ = future_att.pop()
+            self.obj_val = self.request[obj_typ]
+            self.obj_typ = _FUTURE_ATT[obj_typ]
+            self.response = {}
+            message = self.obj_typ + ' object not found: ' + self.obj_val
         else:
             obj_typ = valid_att.pop()
             self.obj_val = self.request[obj_typ]

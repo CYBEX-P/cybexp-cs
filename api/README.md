@@ -19,6 +19,15 @@ Temporary token for testing : ```eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOj
 'file-hash' : 'file',
 'file-sha256' : 'file',
 'file-hash-sha256' : 'file'
+'port' : 'port',
+'btc' : 'btc',
+'BTC' : 'btc',
+'autonomous-system' : 'autonomous-system',
+'AS' : 'autonomous-system',
+'BGP' : 'bgp-path',
+'bgp-path' : 'bgp-path',
+'ssid' : 'ssid',
+'comment' : 'comment'
 }
 ```
 

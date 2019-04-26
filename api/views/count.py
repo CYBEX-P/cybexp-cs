@@ -53,6 +53,7 @@ def get_count(obj_typ, obj_val, **kwargs):
 
 cparser = reqparse.RequestParser()
 for va in _VALID_ATT: cparser.add_argument(va)
+for fa in _FUTURE_ATT: cparser.add_argument(fa)
 cparser.add_argument('from')
 cparser.add_argument('to')
 cparser.add_argument('timezone')
