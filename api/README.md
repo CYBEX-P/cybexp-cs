@@ -20,6 +20,7 @@ Body:
 #### Example JSON Body:
 ###### IP Address:
 ```{ "ipv4-addr" : "104.168.138.60" }```
+
 ####### URL:
 ```{ "url" : "http://165.227.0.144:80/bins/rift.x86"}```
 
