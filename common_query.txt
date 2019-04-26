@@ -18,8 +18,10 @@ ISODate("2012-12-19T06:01:17.171Z")
 
 .limit(10000).count( { "applySkipLimit": true })
 
+# ================== Countn with Time ======================
 {"$and" : [{"objects.0.value" : "104.168.138.60"}, {"x_first_observed": {"$gte": ISODate("2019-03-01T00:00:00.000Z"),"$lte": ISODate("2019-04-04T00:00:00.000Z")}}]} 
 sort({"x_first_observed":1},{"_id" : 1}
+{"$and" : [{"objects.0.value" : "104.168.138.60"}, {"x_first_observed": {"$gte": ISODate("2019-03-01T00:00:00.000Z")}}]}
 
 {"objects.0.type" : "ipv4-addr"}
 
