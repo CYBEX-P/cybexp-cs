@@ -41,7 +41,7 @@ def get_count(**kwargs):
         except KeyError: query["$and"].append({"x_first_observed": {"$lte": to_datetime}})
 
     number_observed = ancoll.find(query, {"_id":1},
-        limit = 100000).count(with_limit_and_skip=True)
+        limit = _QLIM).count(with_limit_and_skip=True)
     if number_observed == 0: return None
     first_observed = ancoll.find_one(filter = query, sort=[("x_first_observed",
                     pymongo.ASCENDING)])["first_observed"]

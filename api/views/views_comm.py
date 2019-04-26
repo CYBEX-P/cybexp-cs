@@ -13,3 +13,4 @@ from datetime import datetime
 import builtins
 builtins._PROJECTION = {"_id":0, "filters":0, "bad_data":0}
 builtins._REPORT_ORGID = "identity--7f60ac36-74dd-4c23-bc31-3226533d93d2"
+builtins._QLIM = 10000

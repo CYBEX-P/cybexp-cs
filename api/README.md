@@ -1,13 +1,30 @@
 # API Reference
 
-### Get All Information Related to an IP Address
+### 
+
+### GET Related Objects to an Attribute
+## Supported attributes
+```
+ipv4-addr
+url
+```
+## Query Format
 '''
 url = http://cybexp1.acs.unr.edu:5000/api/v1.0/related/
 method = POST
 Authorization Header : Bearer <JWT Token>
 Body:
     content-type: application/json
-    data: { "ipv4-addr" : "104.168.138.60" }
+    data: { <attribute type> : <attribute value> }
 '''
+## Example JSON Body:
+# IP Address:
+```{ "ipv4-addr" : "104.168.138.60" }```
+# URL:
+```{ "url" : "http://165.227.0.144:80/bins/rift.x86"}```
 
-### How to get JWT token
+
+
+
+
+### GET JWT Token
