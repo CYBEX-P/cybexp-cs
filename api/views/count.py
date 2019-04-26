@@ -63,14 +63,13 @@ class Count(Report):
 
     @jwt_required
     def post(self):
-        obj_typ, obj_val = super().post(cparser)
+        if not self.valid_att(cparser): return (self.response, self.status_code)
 
-        req = cparser.parse_args()
-        from_datetime = req['from']
-        to_datetime = req['to']
-        tzname = req['timezone']
+        from_datetime = self.request['from']
+        to_datetime = self.request['to']
+        tzname = self.request['timezone']
 
-        r = get_count(obj_typ, obj_val, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
+        r = get_count(self.obj_typ, self.obj_val, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
         
-        if not r:  r = {'message': obj_typ + ' object not found: ' + obj_val}
+        if not r:  r = {'message': self.obj_typ + ' object not found: ' + self.obj_val}
         return (r, 200) 

@@ -36,29 +36,29 @@ builtins._VALID_ATT = {'ip' : 'ipv4-addr',
 class Report(Resource):
     def __init__(self, example):
         self.example = example
+        self.response = {"example" : self.example, "documentation" : _DOCUMENTATION}
+        self.status_code = 200
+        self.request = {}
+        self.obj_typ = None
+        self.obj_val = None
         super().__init__()
     
     @jwt_required
-    def post(self, req_parser):
-        status_code, r = 200, {"example" : self.example, "documentation" : _DOCUMENTATION}
+    def valid_att(self, req_parser):
+        self.request = req_parser.parse_args()
+        request_keys = [ k for k in self.request.keys() if self.request[k]]
+        valid_keys = _VALID_ATT.keys()
 
-        req = req_parser.parse_args()
-        req_keys = req.keys()
+        valid_att = set(request_keys).intersection(valid_keys)
+        count = len(valid_att)
+        if count < 1:  message, self.status_code = 'Input valid attribute object, check spelling', 400
+        elif count > 1: message, self.status_code = 'Input one attribute object at a time', 400
+        else:
+            obj_typ = valid_att.pop()
+            self.obj_val = self.request[obj_typ]
+            self.obj_typ = _VALID_ATT[obj_typ]
+            return True
+        self.response['message'] = message
+        return False
         
-        count = 0
-        for ot in _VALID_ATT:
-            ov = req[ot]
-            if ov:
-                obj_typ = ot
-                obj_val = ov 
-                count += 1
-        if count < 1:  message, status_code = 'Input valid attribute object, check spelling', 400
-        elif count > 1: message, status_code = 'Input one attribute object at a time', 400
-
-        if status_code != 200:
-            r['message'] = message
-            return (r, status_code)
-
-        obj_val = req[obj_typ]
-        return obj_typ, obj_val
         

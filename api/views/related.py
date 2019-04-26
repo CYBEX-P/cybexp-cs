@@ -48,15 +48,15 @@ for va in _VALID_ATT: rparser.add_argument(va)
 
 class Related(Report):
     def __init__(self):
-        super().__init__({ "ipv4-addr" : "104.168.138.60" })
+        super().__init__(example = { "ipv4-addr" : "104.168.138.60" })
 
     @jwt_required
     def post(self):
-        obj_typ, obj_val = super().post(rparser)
+        if not self.valid_att(rparser): return (self.response, self.status_code)
         
         # Get Related
-        r = get_related(obj_typ, obj_val)
+        r = get_related(self.obj_typ, self.obj_val)
 
-        if not r:  r = {'message': obj_typ + ' object not found: ' + obj_val}
+        if not r:  r = {'message': self.obj_typ + ' object not found: ' + self.obj_val}
         return (r, 200)    
 
