@@ -1,10 +1,5 @@
 # API Reference
 
-### Query Taking Too LONG? A note on Performance:
-The API server runs in cybexp1.acs.unr.edu. This is also the processing server. Which means there are analysis scripts running in there which read new data periodically and process them. During that period the server becomes very slow and queries may take more than 100 seconds.
-
-In short if queries take too much time please wait it out.
-
 Temporary token for testing : ```eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1NTQyNTI2ODcsIm5iZiI6MTU1NDI1MjY4NywianRpIjoiODU5MDFhMGUtNDRjNC00NzEyLWJjNDYtY2FhMzg0OTU0MmVhIiwiaWRlbnRpdHkiOiJpbmZvc2VjIiwiZnJlc2giOmZhbHNlLCJ0eXBlIjoiYWNjZXNzIn0.-Vb_TgjBkAKBcX_K3Ivq3H2N-sVkpIudJOi2a8mIwtI```
 
 ### Supported attributes
