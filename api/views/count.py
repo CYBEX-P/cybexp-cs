@@ -6,17 +6,14 @@ else:
 # Load Analytics Database
 ancoll = coll_or_fs('analytics')
 
-def get_count(**kwargs): 
-    obj_typ = kwargs.pop('obj_typ', None)
-    if not obj_typ: raise TypeError('Required argument obj_typ missing')
-    query = {"$and" : [{"objects.0.type":obj_typ}]}
-
-    if obj_typ in ['ipv4-add4','url']:
-        obj_val = kwargs.pop('obj_val', None)
-        if not obj_val: raise TypeError('Required argument obj_val missing')
-        query["$and"].append({"objects.0.type":obj_typ})
-    else: return None    
-       
+def get_count(**kwargs):
+    for obj_typ in _VALID_ATT.keys():
+        obj_val = kwargs.pop(obj_typ, None)
+        if obj_val: break
+    if not obj_val: return None
+    obj_typ = _VALID_ATT[obj_typ]
+    query = {"$and" : [{"objects.0.type" : obj_typ},
+                       {"objects.0.value" : obj_val}]} 
     
     utc = pytz.utc
     tzname = kwargs.pop('tzname', None)
@@ -32,16 +29,16 @@ def get_count(**kwargs):
         query["$and"].append({"x_first_observed": {"$gte": from_datetime}})
 
     to_datetime = kwargs.pop('to_datetime', None)
-    if not to_datetime: to_datetime = utc.localize(datetime.utcnow())
-    else:
+    if to_datetime:
         try: to_datetime = parse_time(to_datetime)
         except: return 'Unknown totime'
         to_datetime = tz.localize(to_datetime).astimezone(utc)
-        try: query["$and"][1]["x_first_observed"]["$lte"] = to_datetime
-        except KeyError: query["$and"].append({"x_first_observed": {"$lte": to_datetime}})
+        try: query["$and"][2]["x_first_observed"]["$lte"] = to_datetime
+        except IndexError: query["$and"].append({"x_first_observed": {"$lte": to_datetime}})
 
     number_observed = ancoll.find(query, {"_id":1},
         limit = _QLIM).count(with_limit_and_skip=True)
+    
     if number_observed == 0: return None
     first_observed = ancoll.find_one(filter = query, sort=[("x_first_observed",
                     pymongo.ASCENDING)])["first_observed"]
@@ -87,8 +84,8 @@ class Count(Resource):
         to_datetime = req['to']
         tzname = req['timezone']
         
-        if ip: r = get_count(obj_typ = 'ipv4-addr', obj_val = ip, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
-        elif url: r = get_count(obj_typ = 'url', obj_val = url, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
+        if ip: r = get_count(ip = ip, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
+        elif url: r = get_count(url = url, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
         else: return ({'message': 'Input valid attribute object, check spelling', 'example':example}, 400) 
         if not r: r = {'message': obj_typ + ' object not found: ' + obj_val}
 
