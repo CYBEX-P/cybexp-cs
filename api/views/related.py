@@ -12,7 +12,7 @@ def get_related(obj_typ, obj_val, **kwargs):
 
     query = { "$and" : [ {"objects.0.type" : obj_typ} ]}
     
-    # Take of special structures
+    # Take care of special structures
     if obj_typ == 'file': query["$and"].append({"objects.0.hashes.SHA-256" : obj_val} )
     else: query["$and"].append({"objects.0.value" : obj_val} )
         
@@ -44,37 +44,19 @@ def get_related(obj_typ, obj_val, **kwargs):
 
 
 rparser = reqparse.RequestParser()
-for va in _VALID_ATT:
-    rparser.add_argument(va)
+for va in _VALID_ATT: rparser.add_argument(va)
 
-class Related(Resource):
+class Related(Report):
+    def __init__(self):
+        super().__init__({ "ipv4-addr" : "104.168.138.60" })
 
     @jwt_required
-    def post(self):        
-        # Validate Request
-        example = { "ipv4-addr" : "104.168.138.60" }
-        status_code, r = 200, {"example" : example, "documentation" : _DOCUMENTATION}
-
-        req = rparser.parse_args()
-        req_keys = req.keys()
-        
-        count = 0
-        for ot in _VALID_ATT:
-            ov = req[ot]
-            if ov:
-                obj_typ = ot
-                obj_val = ov 
-                count += 1
-        if count < 1:  message, status_code = 'Input valid attribute object, check spelling', 400
-        elif count > 1: message, status_code = 'Input one attribute object at a time', 400
-
-        if status_code != 200:
-            r['message'] = message
-            return (r, status_code)
+    def post(self):
+        obj_typ, obj_val = super().post(rparser)
         
         # Get Related
-        obj_val = req[obj_typ]
         r = get_related(obj_typ, obj_val)
 
         if not r:  r = {'message': obj_typ + ' object not found: ' + obj_val}
-        return (r, 200)
+        return (r, 200)    
+

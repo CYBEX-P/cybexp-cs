@@ -6,14 +6,12 @@ else:
 # Load Analytics Database
 ancoll = coll_or_fs('analytics')
 
-def get_count(**kwargs):
-    for obj_typ in _VALID_ATT.keys():
-        obj_val = kwargs.pop(obj_typ, None)
-        if obj_val: break
-    if not obj_val: return None
-    obj_typ = _VALID_ATT[obj_typ]
-    query = {"$and" : [{"objects.0.type" : obj_typ},
-                       {"objects.0.value" : obj_val}]} 
+def get_count(obj_typ, obj_val, **kwargs):
+    query = { "$and" : [ {"objects.0.type" : obj_typ} ]}
+    
+    # Take care of special structures
+    if obj_typ == 'file': query["$and"].append({"objects.0.hashes.SHA-256" : obj_val} )
+    else: query["$and"].append({"objects.0.value" : obj_val} )
     
     utc = pytz.utc
     tzname = kwargs.pop('tzname', None)
@@ -54,39 +52,25 @@ def get_count(**kwargs):
     return json.loads(result_bundle.serialize())
 
 cparser = reqparse.RequestParser()
-cparser.add_argument('ipv4-addr')
-cparser.add_argument('url')
+for va in _VALID_ATT: cparser.add_argument(va)
 cparser.add_argument('from')
 cparser.add_argument('to')
 cparser.add_argument('timezone')
 
-class Count(Resource):
+class Count(Report):
+    def __init__(self):
+        super().__init__({ "url" : "http://165.227.0.144:80/bins/rift.x86", "from" : "2018/4/1 00:00", "to" : "2020/4/2 00:00", "timezone" : "US/Pacific" })
 
     @jwt_required
     def post(self):
-        example = { "url" : "http://165.227.0.144:80/bins/rift.x86", "from" : "2018/4/1 00:00", "to" : "2020/4/2 00:00", "timezone" : "US/Pacific" }
-        req = cparser.parse_args()
-        valid_obj_typ = ['ipv4-addr', 'url']
-        req_keys = req.keys()
+        obj_typ, obj_val = super().post(cparser)
 
-        count = 0
-        for ot in valid_obj_typ:
-            ov = req[ot]
-            if ov:
-                obj_typ = ot
-                obj_val = ov 
-                count += 1        
-        if count > 1: return ({'message' : 'Input one attribute object at a time', 'example':example}, 400)
-            
-        ip = req['ipv4-addr']
-        url = req['url']
+        req = cparser.parse_args()
         from_datetime = req['from']
         to_datetime = req['to']
         tzname = req['timezone']
-        
-        if ip: r = get_count(ip = ip, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
-        elif url: r = get_count(url = url, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
-        else: return ({'message': 'Input valid attribute object, check spelling', 'example':example}, 400) 
-        if not r: r = {'message': obj_typ + ' object not found: ' + obj_val}
 
-        return (r, 200)
+        r = get_count(obj_typ, obj_val, from_datetime = from_datetime, to_datetime = to_datetime, tzname = tzname)
+        
+        if not r:  r = {'message': obj_typ + ' object not found: ' + obj_val}
+        return (r, 200) 
