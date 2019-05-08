@@ -30,7 +30,8 @@ builtins._VALID_ATT = {'ip' : 'ipv4-addr',
                        'file' : 'file',
                        'file-hash' : 'file',
                        'file-sha256' : 'file',
-                       'file-hash-sha256' : 'file'}
+                       'file-hash-sha256' : 'file',
+                       'network' : 'ipv4-addr'}
 builtins._FUTURE_ATT = {'port' : 'port',
                         'btc' : 'btc',
                         'BTC' : 'btc',
@@ -44,12 +45,18 @@ builtins._FUTURE_ATT = {'port' : 'port',
 # Classes
 class Report(Resource):
     def __init__(self, example):
+        self.empty_stix2_bundle = json.loads(stix2.Bundle().serialize())
+        self.empty_stix2_bundle['objects'] = []
         self.example = example
         self.response = {"example" : self.example, "documentation" : _DOCUMENTATION}
         self.status_code = 200
         self.request = {}
         self.obj_typ = None
         self.obj_val = None
+        tzname = None
+        from_datetime = None
+        to_datetime = None
+        query = {}
         super().__init__()
     
     @jwt_required
@@ -64,14 +71,14 @@ class Report(Resource):
         count = len(valid_att) + len(future_att)
 
         message = None
-        if count < 1:  message, self.status_code = 'Input valid attribute object, check spelling', 400
-        elif count > 1: message, self.status_code = 'Input one attribute object at a time', 400
+        if count < 1:  message, self.status_code = 'Input valid attribute object, check spelling', 422
+        elif count > 1: message, self.status_code = 'Input one attribute object at a time', 422
         elif future_att:
             obj_typ = future_att.pop()
             self.obj_val = self.request[obj_typ]
             self.obj_typ = _FUTURE_ATT[obj_typ]
             self.response = {}
-            message = self.obj_typ + ' object not found: ' + self.obj_val
+            message = self.empty_stix2_bundle
         else:
             obj_typ = valid_att.pop()
             self.obj_val = self.request[obj_typ]
@@ -79,5 +86,36 @@ class Report(Resource):
             return True
         self.response['message'] = message
         return False
+
+    def qadd_dtrange(self):
+        utc = pytz.utc
+        tzname = self.tzname
+        from_datetime = self.from_datetime
+        to_datetime =self.to_datetime
+        
+        if not tzname: tzname = 'UTC'
+        try: tz = pytz.timezone(tzname)
+        except UnknownTimeZoneError:
+            self.response['message'], self.status_code = 'Unknown Timezone : ' + tzname, 422 
+            return False
+        
+        if from_datetime:
+            try: from_datetime = parse_time(from_datetime)
+            except ValueError:
+                self.response['message'], self.status_code = 'Invalid from-time : ' + from_datetime, 422 
+                return False
+            from_datetime = tz.localize(from_datetime).astimezone(utc)
+            self.query["$and"].append({"x_first_observed": {"$gte": from_datetime}})
+
+        if to_datetime:
+            try: to_datetime = parse_time(to_datetime)
+            except:
+                self.response['message'], self.status_code = 'Invalid to-time : ' + to_datetime, 422 
+                return False
+            to_datetime = tz.localize(to_datetime).astimezone(utc)
+            try: self.query["$and"][2]["x_first_observed"]["$lte"] = to_datetime
+            except IndexError: self.query["$and"].append({"x_first_observed": {"$lte": to_datetime}})
+
+        return True
         
         

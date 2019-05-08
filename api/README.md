@@ -27,7 +27,8 @@ Temporary token for testing : ```eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOj
 'BGP' : 'bgp-path',
 'bgp-path' : 'bgp-path',
 'ssid' : 'ssid',
-'comment' : 'comment'
+'comment' : 'comment',
+'network' : 'network'
 }
 ```
 

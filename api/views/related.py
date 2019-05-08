@@ -58,6 +58,6 @@ class Related(Report):
         # Get Related
         r = get_related(self.obj_typ, self.obj_val)
 
-        if not r:  r = {'message': self.obj_typ + ' object not found: ' + self.obj_val}
+        if not r:  r = self.empty_stix2_bundle
         return (r, 200)    
 
