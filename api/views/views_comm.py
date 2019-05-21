@@ -95,7 +95,7 @@ class Report(Resource):
         
         if not tzname: tzname = 'UTC'
         try: tz = pytz.timezone(tzname)
-        except UnknownTimeZoneError:
+        except pytz.UnknownTimeZoneError:
             self.response['message'], self.status_code = 'Unknown Timezone : ' + tzname, 422 
             return False
         

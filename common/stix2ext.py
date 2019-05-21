@@ -14,14 +14,8 @@ class PaloAltoAlert():
     pass
 
 
-@CustomObservable('x-cowrie', [
-    ('ver', properties.StringProperty(required=True)),
-    ('eventid', properties.StringProperty(required=True)),
-    ('msg', properties.StringProperty(required=True)),
-    ('src_ref', properties.ObjectReferenceProperty(valid_types=
-        ['ipv4-addr', 'ipv6-addr', 'mac-addr', 'domain-name'])),    
-])
-class Cowrie():
+@CustomObservable('x-misp-event', [])
+class MispEvent():
     pass
 
 @CustomObservable('x-unr-honeypot', [])
@@ -31,3 +25,5 @@ class UnrHoneypot():
 @CustomObservable('x-cuckoo-report', [])
 class CuckooReport():
     pass
+
+

@@ -9,9 +9,7 @@ def parsemain(lf, orgid, typtag, tzname):
     lf = lf.split('\r\n')
     json_val = []
     for line in lf:
-        if typtag =='cowrie':
-            [time_final, objects_val] = parse_cowrie(line)
-        elif typtag == 'palo_alto_alert':
+        if typtag == 'palo_alto_alert':
             [time_final, objects_val] = parse_palo_alto_alert(line, tzname)
         elif typtag == 'iptables':
             [time_final, objects_val] = parse_iptables(line, tzname)
@@ -19,18 +17,23 @@ def parsemain(lf, orgid, typtag, tzname):
             [time_final, objects_val] = parse_unr_honeypot(line, tzname)
         elif typtag == 'cuckoo-report':
             [time_final, objects_val] = parse_cuckoo_report(line, tzname)
+        elif typtag == 'misp-api':
+            [time_final, objects_val] = parse_misp_event(line, tzname)
         else:
             print("Unknown file type (typtag): " + typtag)
-            import pdb
-            pdb.set_trace()
             continue
         try:
-            observedDataRegKey = observed_data(time_final, orgid, objects_val)
+            obj = observed_data(time_final, orgid, objects_val)
         except:
             pass
 ##        bundle = stix2.Bundle(objects = [observedDataRegKey])
-        json_val.append(json.loads(observedDataRegKey.serialize()))       
-    return json_val 
+
+        json_val.append(json.loads(obj.serialize()))       
+    return json_val
+
+@CustomObservable('x-misp-event', [])
+class MispEvent():
+    pass
 
         
 def observed_data(time_final, orgid, objects_val):  
