@@ -1,0 +1,66 @@
+Attribute, Object, Event, Session
+
+{
+	"id" : 123,
+	"type" : "ipv4",
+	"value" : "1.1.1.1",
+	"uuid" : "attribute--b2c6fadc-96f4-4cdd-8a73-502c8c9f4e47",
+	"obj_ref" : []
+}
+
+Json Schema:
+
+{
+  "definitions": {},
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://example.com/root.json",
+  "type": "object",
+  "title": "The Attribute Schema",
+  "required": [
+    "id",
+    "type",
+    "value",
+    "uuid"
+  ],
+  "properties": {
+    "id": {
+      "$id": "#/properties/id",
+      "type": "integer",
+      "title": "The Id Schema",
+      "default": 0,
+      "examples": [
+        123
+      ]
+    },
+    "type": {
+      "$id": "#/properties/type",
+      "type": "string",
+      "title": "The Type Schema",
+      "default": "",
+      "examples": [
+        "ipv4"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "value": {
+      "$id": "#/properties/value",
+      "type": "string",
+      "title": "The Value Schema",
+      "default": "",
+      "examples": [
+        "1.1.1.1"
+      ],
+      "pattern": "^(.*)$"
+    },
+    "uuid": {
+      "$id": "#/properties/uuid",
+      "type": "string",
+      "title": "The Uuid Schema",
+      "default": "",
+      "examples": [
+        "attribute--b2c6fadc-96f4-4cdd-8a73-502c8c9f4e47"
+      ],
+      "pattern": "^attribute--[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[89abAB][0-9a-fA-F]{3}\-[0-9a-fA-F]{12}$"
+    }
+  }
+}

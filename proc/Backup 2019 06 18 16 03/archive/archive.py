@@ -2,12 +2,13 @@
 
 import sys
 sys.path.append("..")
+
+import time
+import gridfs
 from common.loaddb import loaddb
 from common.dbam import put_data
 from common.crypto import decrypt_file
 from parsemain import parsemain
-
-import time, gridfs
 from pymongo.errors import CursorNotFound
 
 
