@@ -1,16 +1,15 @@
 # Imports
-import requests, json, time, urllib, threading, logging
+import requests, json, time, urllib, threading, logging, random, pdb
 
-# Builtin variables
-import builtins
-builtins._TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiYWNjZXNzIiwianRpIjoiZWFhNDUzOWEtZjE5Yy00OWFiLThjNjktZTc4MDJiYmY5MmVhIiwiaWRlbnRpdHkiOiJhZG1pbiIsImZyZXNoIjpmYWxzZSwiaWF0IjoxNTU3MzYzNjI2LCJuYmYiOjE1NTczNjM2MjZ9.PcKIqxjlPGZQGeCyOakjYeKPPaVQvPhFSbrwJzeDTWc"
+def exponential_backoff(n):
+    s = max(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
+    time.sleep(s)
 
 # Classes
 class CybInp():
-    def __init__(self, *args, **kwargs):
-        self.api_srv = _CONF['api_srv']
-        self.post_url = self.api_srv + '/api/v1.0/event'
-
+    def __init__(self, url, token, **kwargs):
+        self.post_url = url + '/api/v1.0/event'
+        self.token = token
         self.orgid = kwargs.pop('orgid')
         self.typtag = kwargs.pop('typtag')
         self.timezone = kwargs.pop('timezone', 'UTC')
@@ -26,9 +25,8 @@ class CybInp():
             if type(e) != str: e = json.dumps(e)
             data = e.encode()
             files = {'file' : data}
-            headers={'Authorization': 'Bearer '+ _TOKEN}
+            headers={'Authorization': 'Bearer '+ self.token}
 
-        
             r = requests.post(self.post_url, files=files, headers=headers,
                               data = {'orgid': self.orgid,
                                       'typtag': self.typtag,

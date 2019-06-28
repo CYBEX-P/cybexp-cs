@@ -10,19 +10,20 @@ from datetime import datetime
 import werkzeug
 
 # Load Cache Database
-ccoll = coll_or_fs('cache')
-cfs = coll_or_fs('cache_fs')
+from pymongo import MongoClient
+import gridfs
+URI = 'mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin'
+client = MongoClient(URI)
+
+ccoll = client.cache_test.file_entries
+cfs = gridfs.GridFS(client.cache_test)
 
 # Post Events to API
 ep = reqparse.RequestParser()
 ep.add_argument('orgid', required=True)
-ep.add_argument('file', location='files', required=True,
-                type=werkzeug.datastructures.FileStorage)
+ep.add_argument('file', location='files', required=True, type=werkzeug.datastructures.FileStorage)
 ep.add_argument('typtag', required=True)
 ep.add_argument('timezone', required=True)
-
-def test():
-    pass
 
 class Event(Resource):
     decorators=[]

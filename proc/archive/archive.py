@@ -38,15 +38,14 @@ def decrypt_file(file_in, fpriv_name="priv.pem"):
     return data.decode("utf-8")
 
 def parsemain(data, orgid, typtag, timezone, backend):
-    print(typtag)
     raw_type = {'unr-honeypot' : 'x-unr-honeypot', 'misp-api':'x-misp-event'}.get(typtag)
     raw = Raw(raw_type, data, 'identity--'+orgid, timezone=timezone, backend=backend)
     return raw
 
 def archive(config):
-    cache_coll, archive_backend, fs, private_key_file_path =  decode_archive_config(config)
-
     try:
+        cache_coll, archive_backend, fs, private_key_file_path =  decode_archive_config(config)
+    
         cursor = cache_coll.find({"processed":False})
         for event in cursor:
             upload_time = event['datetime']
@@ -67,7 +66,7 @@ def archive(config):
 if __name__ == "__main__":
     archive_config = { 
 		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-		"cache_db" : "cache_db",
+		"cache_db" : "cache_test",
 		"cache_coll" : "file_entries",
 		"archive_db" : "tahoe_db",
 		"archive_coll" : "raw",

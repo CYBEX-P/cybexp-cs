@@ -14,13 +14,11 @@ source ~/.bashrc
 workon cybexp
 
 # 2. Run Flask API:
-cd ~/cybexp/api
-export FLASK_APP=run.py
-export FLASK_ENV=development
-nohup flask run --host=0.0.0.0 --port=5000 &
+cd ~/cybexp/api/api
+nohup python run.py &
 
 # 3. Run Input Stream:
-cd ~/cybexp/input
+cd ~/cybexp/api/input
 nohup python input.py &
 
 # 4. Run Archive Script
