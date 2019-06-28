@@ -17,7 +17,7 @@ _EIDS = ['cowrie.direct-tcpip.request', 'cowrie.login.failed', 'cowrie.session.c
 _QLIM = 100
 _PROJECTION = {"_id":0, "filters":0, "bad_data":0}
 
-def get_new_data(filt_id, *args, **kwargs):    
+def get_new_data(filt_id, **kwargs):    
     query = {"$and":[{"objects.0.type" : "x-unr-honeypot"}, {"bad_data" : { "$ne": True}}, {"filters" : { "$ne": filt_id }}, { "objects.0.data.eventid" : {"$exists":True}}]}
 
     eventid = kwargs.pop('eventid', None)

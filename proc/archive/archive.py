@@ -10,7 +10,7 @@ def decode_archive_config(config):
     cache_db = config.pop("cache_db", "cache_db")
     cache_coll = config.pop("cache_coll", "file_entries")
     archive_db = config.pop("archive_db", "tahoe_db")
-    archive_coll = config.pop("archive_coll", "raw")
+    archive_coll = config.pop("archive_coll", "instances")
     private_key_file_path = config.pop("private_key", "priv.pem")
 
     client = MongoClient(mongo_url)
@@ -42,26 +42,38 @@ def parsemain(data, orgid, typtag, timezone, backend):
     raw = Raw(raw_type, data, 'identity--'+orgid, timezone=timezone, backend=backend)
     return raw
 
-def archive(config):
-    try:
-        cache_coll, archive_backend, fs, private_key_file_path =  decode_archive_config(config)
-    
-        cursor = cache_coll.find({"processed":False})
-        for event in cursor:
-            upload_time = event['datetime']
-            orgid = event['orgid']
-            typtag = event['typtag']
-            timezone = event['timezone']
-            fid = event['fid']
-            f = fs.get(fid)
-        
-            data = str(decrypt_file(f, private_key_file_path))
-            instance = parsemain(data, orgid, typtag, timezone, archive_backend)
-        
-            cache_coll.update_one({"_id" : event["_id"]}, {"$set":{"processed":True}})
+def exponential_backoff(n):
+    s = max(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
+    time.sleep(s)
 
-    except CursorNotFound: time.sleep(600)
-    except Exception: logging.error("Exception in archive()", exc_info=True)
+def archive(config):
+    n = 0
+    while True:
+        try:
+            cache_coll, archive_backend, fs, private_key_file_path =  decode_archive_config(copy.deepcopy(config))
+        
+            cursor = cache_coll.find({"processed":False})
+            for event in cursor:
+                upload_time = event['datetime']
+                orgid = event['orgid']
+                typtag = event['typtag']
+                timezone = event['timezone']
+                fid = event['fid']
+                f = fs.get(fid)
+            
+                data = str(decrypt_file(f, private_key_file_path))
+                instance = parsemain(data, orgid, typtag, timezone, archive_backend)
+            
+                cache_coll.update_one({"_id" : event["_id"]}, {"$set":{"processed":True}})
+                n = 0
+            
+        except CursorNotFound:
+            exponential_backoff(n)
+            n += 1
+        except Exception:
+            logging.error("proc.archive.archive: ", exc_info=True)
+            exponential_backoff(n)
+            n += 1
     
 if __name__ == "__main__":
     archive_config = { 
@@ -73,8 +85,7 @@ if __name__ == "__main__":
 		"private_key" : "../key/priv.pem"
             }
 
-    logging.basicConfig(filename = '../proc.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
- 
-    while True:
-        archive(copy.deepcopy(archive_config))
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
+
+    archive(copy.deepcopy(archive_config))
 

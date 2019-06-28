@@ -1,42 +1,69 @@
 # proc\analytics\analytics.py
-#
+from pymongo import MongoClient
 from queue import Queue
-from filt_cowrie import filt_cowrie_session_file_download
-from filt_cowrie import filt_cowrie_2_ip
-from filt_cowrie import filt_cowrie_2_url
-import time
+import time, logging, copy, random
 
-def wait_10_mins():
-    time.sleep(600)
-    return True
+from tahoe import MongoBackend
+from filters import filt_cowrie
+import pdb
+def exponential_backoff(n):
+    s = min(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
+    time.sleep(s)
+
+def decode_analytics_config(config):
+    mongo_url = config.pop("mongo_url")
+    analytics_db = config.pop("analytics_db", "tahoe_db")
+    analytics_coll = config.pop("analytics_coll", "instances")
+
+    client = MongoClient(mongo_url)
+    analytics_db = client.get_database(analytics_db)
+    analytics_backend = MongoBackend(analytics_db)
+
+    return analytics_backend
 
 def infinite_worker(q):
+    n = 0
     while not q.empty():
-        func = q.get()
+        print(n)
+        items = q.get()
+        func, args =  items[0], items[1:]
         try:
-            r = func()
-            if r == None:
-                time.sleep(300)
-                continue
+            r = func(*args)
+            if not r:
+                exponential_backoff(n)
+                n += 1
+            else:
+                n = 0
 
         except Exception as exception:
-            print('=======================')
-            print(time.time())
-            print(exception)
-            time.sleep(300)
-
+            logging.error("proc.analytics.analytics: ", exc_info=True)
+            exponential_backoff(n)
+            n += 1
+            
         q.task_done()
-        q.put(func)
+        q.put(items)
 
-        
+def analytics(config):
+    try:
+        analytics_backend =  decode_analytics_config(config)
 
-q = Queue()
-q.put(filt_cowrie_2_url)
-q.put(filt_cowrie_session_file_download)
-q.put(filt_cowrie_2_ip)
+        q = Queue()
+        q.put([filt_cowrie, analytics_backend])
 
-infinite_worker(q)
+        infinite_worker(q)
 
+    except Exception: logging.error("proc.analytics.analytics: ", exc_info=True)
+
+if __name__ == "__main__":
+    analytics_config = { 
+		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+		"analytics_db" : "tahoe_db",
+		"analytics_coll" : "instances"
+            }
+
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
+ 
+    analytics(copy.deepcopy(analytics_config))
 
     
 

@@ -39,11 +39,12 @@ def ws_proc(config):
             for wsi in wsi_lst:
                 wsi.run()
                 
+            n = 0
+            
         except Exception:
             logging.error("plugin.ws.ws_proc -- ", exc_info=True)
             exponential_backoff(n)
-            
-        n += 1
+            n += 1
 
 if __name__ == "__main__":
     with open("../../config.json") as f: config = json.load(f)
