@@ -1,25 +1,15 @@
 # proc\analytics\analytics.py
 from pymongo import MongoClient
 from queue import Queue
-import time, logging, copy, random
+import time, logging, copy, random, os
 
 from tahoe import MongoBackend
 from filters import filt_cowrie
 import pdb
+
 def exponential_backoff(n):
     s = min(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
     time.sleep(s)
-
-def decode_analytics_config(config):
-    mongo_url = config.pop("mongo_url")
-    analytics_db = config.pop("analytics_db", "tahoe_db")
-    analytics_coll = config.pop("analytics_coll", "instances")
-
-    client = MongoClient(mongo_url)
-    analytics_db = client.get_database(analytics_db)
-    analytics_backend = MongoBackend(analytics_db)
-
-    return analytics_backend
 
 def infinite_worker(q):
     n = 0
@@ -45,10 +35,12 @@ def infinite_worker(q):
 
 def analytics(config):
     try:
-        analytics_backend =  decode_analytics_config(config)
+        os.environ["_MONGO_URL"] = config.pop("mongo_url")
+        os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
+        os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
 
         q = Queue()
-        q.put([filt_cowrie, analytics_backend])
+        q.put([filt_cowrie])
 
         infinite_worker(q)
 
