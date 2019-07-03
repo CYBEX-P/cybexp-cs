@@ -1,6 +1,7 @@
-import pdb
+import os, pdb, logging
 from datetime import datetime as dt
-from tahoe import NoBackend, Attribute, Object, Event, Session, parse
+from pymongo import MongoClient
+from tahoe import NoBackend, MongoBackend, Attribute, Object, Event, Session, parse
 
 _PROJECTION = {"_id":0, "filters":0, "bad_data":0}
 _VALID_ATT = ['ipv4', 'country_code3', 'longitude', 'region_name', 'city_name', 'region_code', 'country_name', 'latitude', 'timezone', 'continent_code', 'country_code2']
@@ -16,38 +17,35 @@ def decode_backend_config():
     return analytics_backend
 
 def filt_cowrie(backend=NoBackend()):
-    filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
-    query = {"$and" : [{"raw_type" : "x-unr-honeypot"}, {"filters" : { "$ne": filt_id }}, { "data.eventid" : {"$exists":True}}]}
-    if os.getenv("_MONGO_URL"): backend = decode_backend_config()
-    cursor = backend.find(query, _PROJECTION)
-    if cursor.count() == 0: return False
-    for raw in cursor:
-        eventid = raw["data"]["eventid"]
-        if   eventid == "cowrie.client.version": j = ClientVersion(raw)
-        elif eventid == "cowrie.command.failed": j = CommandInput(raw)
-        elif eventid == "cowrie.command.input": j = CommandInput(raw)
-        elif eventid == "cowrie.command.success": j = CommandInput(raw)
-        elif eventid == "cowrie.direct-tcpip.data": j = DirectTcpIpData(raw) 
-        elif eventid == "cowrie.direct-tcpip.request": j = DirectTcpIpRequest(raw)
-        elif eventid == "cowrie.login.failed": j = LoginFailed(raw) 
-        elif eventid == "cowrie.login.success": j = LoginSuccess(raw)
-        
-        elif eventid == "cowrie.session.closed":
-            j = SessionClosed(raw)
-        elif eventid == "cowrie.session.connect":
-            j = SessionConnect(raw)
-        elif eventid == "cowrie.session.file_download":
-            j = SessionFileDownload(raw)
-        else: continue
-        
+    try: 
+        filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
+        query = {"$and" : [{"raw_type" : "x-unr-honeypot"}, {"filters" : { "$ne": filt_id }}, { "data.eventid" : {"$exists":True}}, {"_valid" : {"$ne" : False}}]}
+        if os.getenv("_MONGO_URL"): backend = decode_backend_config()
+        cursor = backend.find(query, _PROJECTION)
+        if cursor.count() == 0: return False
+        for raw in cursor:
+            eventid = raw["data"]["eventid"]
+            if   eventid == "cowrie.client.version": j = ClientVersion(raw)
+            elif   eventid == "cowrie.client.kex": j = ClientKex(raw)
+            elif eventid == "cowrie.command.failed": j = CommandInput(raw)
+            elif eventid == "cowrie.command.input": j = CommandInput(raw)
+            elif eventid == "cowrie.command.success": j = CommandInput(raw)
+            elif eventid == "cowrie.direct-tcpip.data": j = DirectTcpIpData(raw) 
+            elif eventid == "cowrie.direct-tcpip.request": j = DirectTcpIpRequest(raw)
+            elif eventid == "cowrie.login.failed": j = LoginFailed(raw) 
+            elif eventid == "cowrie.login.success": j = LoginSuccess(raw)
+            elif eventid == "cowrie.session.closed": j = SessionClosed(raw)
+            elif eventid == "cowrie.session.connect": j = SessionConnect(raw)
+            elif eventid == "cowrie.session.file_download": j = SessionFileDownload(raw)
+            else:
+                logging.warning("proc.analytics.filters.filt_cowrie.filt_cowrie: " + eventid)
+                continue
+    except:
+        logging.error("proc.analytics.analytics: ", exc_info=True)
+        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
+        return False
+    else:
         backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
-        
-            
-
-        
-##        elif i["data"]["eventid"] == "cowrie.session.file_download":
-##            j = filt_cowrie_file_download(i, backend)
-##        backend.update_one( {"uuid" : i["uuid"]}, {"$addToSet": {"filters": filt_id} })
     return True
 
 class Cowrie():
@@ -55,10 +53,9 @@ class Cowrie():
         self.orgid = self.raw["orgid"]
         timestamp = self.data["@timestamp"]
         timestamp = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
+        
         geoip_att = [Attribute(k, v) for k,v in self.data["geoip"].items() if k in  _VALID_ATT]
-
-        attacker_ip = self.data["src_ip"]
-        attacker_ip_att = Attribute('ipv4', attacker_ip)
+        attacker_ip_att = Attribute('ipv4', self.data["src_ip"])
         attacker_obj = Object('attacker', [attacker_ip_att] + geoip_att)
         self.objects.append(attacker_obj)
         
@@ -74,6 +71,40 @@ class Cowrie():
         session_obj = Object('session_identifier', [hostname_att, sessionid_att])
         session = Session('cowrie_session', session_obj)
         return session
+
+class ClientKex(Cowrie):
+    def __init__(self, raw):
+        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_key_exchange'
+
+
+        encCS = [e.split('@')[0] for e in self.data["encCS"]]
+        enc_att = [Attribute('encr_algo', enc_algo) for enc_algo in encCS]
+        enc_obj = Object('encr_algo_set', [enc_att])
+
+        compCS = self.data["compCS"]
+        if compCS: comp_att = [Attribute('comp_algo', comp_algo) for comp_algo in compCS]
+        else: comp_att = [Attribute('comp_algo', 'none')]
+        comp_obj = Object('comp_algo_set', [comp_att])
+
+        kexAlgs = [e.split('@')[0] for e in self.data["kexAlgs"]]
+        kex_algo_att = [Attribute('kex_algo', kex_algo) for kex_algo in kexAlgs]
+        kex_obj = Object('kex_algo_set', [kex_algo_att])
+
+        keyAlgs = [e.split('@')[0] for e in self.data["keyAlgs"]]
+        pub_key_algo_att = [Attribute('pub_key_algo', pub_key_algo) for pub_key_algo in keyAlgs]
+        pub_key_obj = Object('pub_key_algo_set', [pub_key_algo_att])
+
+        macCS = [e.split('@')[0] for e in self.data["macCS"]]
+        mac_att = [Attribute('mac_algo', mac_algo) for mac_algo in macCS]
+        mac_obj = Object('mac_algo_set', [mac_att])
+
+        hash_obj = Object('hash', Attribute('hash', self.data['hassh']))
+
+        self.objects = [enc_obj, comp_obj, kex_obj, pub_key_obj, mac_obj, hash_obj]
+        print('ssh_key_exchange')
+        super().__init__()
+
+
         
 
 class ClientVersion(Cowrie):
@@ -86,28 +117,38 @@ class ClientVersion(Cowrie):
 
         session = self.get_session()
         for event in session:
-            if event["event_type"] == "ssh_login":
-                event = parse(event_dict)
+            if event["event_type"] == "ssh_key_exchange":
+                event = parse(event)
                 for obj in event:
-                    if obj["obj_type"] = "ssh":
+                    if obj["obj_type"] == "ssh_version":
                         obj = parse(obj)
                         obj.add_attribute(ssh_version_att)
                         return
-                ssh_obj = Object('ssh', ssh_version_att)
+                ssh_obj = Object('ssh_version', ssh_version_att)
                 event.add_object(ssh_obj)
 
 class CommandInput(Cowrie):
-    def __init__(self, raw):
+    def __init__(self, raw, objects=[]):
         self.raw, self.data, self.event_type = raw, raw["data"], 'shell_command'
-        self.objects = [ Object('shell_command', Attribute('text', self.data["command"])) ]
+        self.objects = objects + [ Object('shell_command', Attribute('text', self.data["command"])) ]
         super().__init__()
+
+class CommandSuccess(CommandInput):
+    def __init__(self, raw):
+        objects = [Object('command_success', [Attribute('boolean', True)])]
+        super().__init__(raw, objects)
+
+class CommandFailed(CommandInput):
+    def __init__(self, raw):
+        objects = [Object('command_success', [Attribute('boolean', False)])]
+        super().__init__(raw, objects)
 
 class DirectTcpIp(Cowrie):
     def __init__(self):
         src_obj = Object('src', [Attribute('hostname', self.data['host']['name'])])
         dst_obj = Object('dst', [Attribute('url', self.data["dst_ip"])])
         dst_port_obj = Object('dst_port', [Attribute('port', self.data["dst_port"])])
-        protocol_obj = Object('protocol', [Attribute('protocol', protocol)])
+        protocol_obj = Object('protocol', [Attribute('protocol', "TCP")])
 
         self.objects += [src_obj, dst_obj, dst_port_obj, protocol_obj]
         super().__init__()
@@ -127,119 +168,49 @@ class DirectTcpIpRequest(DirectTcpIp):
         super().__init__()
 
 class Login(Cowrie):
-    login_obj = Object('login_credential', [Attribute('username', self.data["username"]),
+    def __init__(self):
+        login_obj = Object('login_credential', [Attribute('username', self.data["username"]),
                                                 Attribute('password', self.data["password"])])
-    self.objects += [login_obj]
-    super().__init__()
+        self.objects += [login_obj]
+        super().__init__()
 
-class LoginFailed(Cowrie):
+class LoginFailed(Login):
     def __init__(self, raw):
         self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_login' 
-        self.objects = [Object('login_success', [Attribute('boolean', success)])]
+        self.objects = [Object('login_success', [Attribute('boolean', False)])]
         super().__init__()
 
-class LoginSuccess(Cowrie):
-    def __init__(self, raw, backend):
-        self.raw = raw
-        self.data = self.raw["data"]
-        self.backend = backend
-
-        self.event_type = 'ssh_login'
-
-        username = self.data["username"]
-        password = self.data["password"]
-        success = True
-
-        username_att = Attribute('username', username)
-        password_att = Attribute('password', password)
-        success_att = Attribute('boolean', success)
-
-        login_obj = Object('login_credential', [username_att, password_att])
-        success_obj = Object('login_success', [success_att])
-
-        self.objects = [login_obj, success_obj]
+class LoginSuccess(Login):
+    def __init__(self, raw):
+        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_login' 
+        self.objects = [Object('login_success', [Attribute('boolean', True)])]
+        super().__init__()      
         
-        super().__init__()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+class SessionClosed(Cowrie):
+    def __init__(self, raw):
+        self.raw, self.data = raw, raw["data"]
+        session = self.get_session()
+        timestamp = self.data["@timestamp"]
+        end_time = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
+        self.update = {"duration" : self.data["duration"], "end_time" : end_time}
+        session.update(self.update)
                 
 class SessionConnect(Cowrie):
-    def __init__(self, raw, backend):
-        self.raw = raw
-        self.data = self.raw["data"]
-        self.backend = backend
+    def __init__(self, raw):
+        self.raw, self.data = raw, raw["data"]
         session = self.get_session()
-
         timestamp = self.data["@timestamp"]
         start_time = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
         self.update = {"start_time" : start_time}
-        
         session.update(self.update)
-    
-class SessionClosed(Cowrie):
-    def __init__(self, raw, backend):
-        self.raw = raw
-        self.data = self.raw["data"]
-        self.backend = backend
-        session = self.get_session()
-
-        duration = self.data["duration"]
-        timestamp = self.data["@timestamp"]
-        end_time = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
-        self.update = {"duration" : duration, "end_time" : end_time}
-        
-        session.update(self.update)
-        
-
-
-        
-
-
-            
-
-    
-
 
 class SessionFileDownload(Cowrie):
-    def __init__(self, raw, backend):
-        self.raw = raw
-        self.data = self.raw["data"]
-        self.backend = backend
+    def __init__(self, raw):
+        self.raw, self.data, self.event_type = raw, raw["data"], 'file_download'
 
-        self.event_type = 'file_download'
-
-        url = self.data['url']
-        filename = url.split('/')[-1]
-        sha256 = self.data['shasum']
-
-        url_att = Attribute('url', url)
-        filename_att = Attribute('filename', filename)
-        sha256_att = Attribute('sha256', sha256)
-
-        url_obj = Object('url', [url_att])   
-        file_obj = Object('file', [filename_att, sha256_att])
-
-        self.objects = [url_obj, file_obj]
+        self.objects = [Object('url', [Attribute('url', self.data['url'])]),
+                        Object('file', [Attribute('filename', self.data['url'].split('/')[-1]),
+                                        Attribute('sha256', self.data['shasum'])])]
         super().__init__()
 
 
