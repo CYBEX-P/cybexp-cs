@@ -44,5 +44,9 @@ api.add_resource(views.Event,'/api/v1.0/event')
 ##api.add_resource(views.Related,'/api/v1.0/related/')
 ##api.add_resource(views.Count,'/api/v1.0/count/')
 
+@app.errorhandler(413)
+def file_to_big(e):
+    return 'File to big'
+
 if __name__=='__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)

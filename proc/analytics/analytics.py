@@ -1,11 +1,10 @@
 # proc\analytics\analytics.py
 from pymongo import MongoClient
 from queue import Queue
-import time, logging, copy, random, os
+import time, logging, copy, random, os, pdb
 
 from tahoe import MongoBackend
-from filters import filt_cowrie
-import pdb
+from filters import filt_misp, filt_cowrie
 
 def exponential_backoff(n):
     s = min(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
@@ -40,7 +39,7 @@ def analytics(config):
         os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
 
         q = Queue()
-        q.put([filt_cowrie])
+        q.put([filt_misp])
 
         infinite_worker(q)
 

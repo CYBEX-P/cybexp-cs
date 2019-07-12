@@ -1,7 +1,5 @@
-if __name__ == "__main__":
-    from views_comm import *
-else:
-    from .views_comm import * # .views=views.py, views=this folder
+if __name__ == "__main__": from views_comm import *
+else: from .views_comm import * 
 
 
 # Load Report Database
@@ -44,12 +42,10 @@ def get_related(obj_typ, obj_val, **kwargs):
 
 
 rparser = reqparse.RequestParser()
-for va in _VALID_ATT: rparser.add_argument(va)
-for fa in _FUTURE_ATT: rparser.add_argument(fa)
 
 class Related(Report):
     def __init__(self):
-        super().__init__(example = { "ipv4-addr" : "104.168.138.60" })
+        super().__init__(example = { "ipv4" : "104.168.138.60" })
 
     @jwt_required
     def post(self):

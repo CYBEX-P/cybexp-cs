@@ -5,37 +5,27 @@ from threading import Thread, active_count
 import plugin
 
 def input_main(config):
+    # Websocket Input Plugin
     try:
-        # Websocket Input Plugin
         ws_p = Thread(target=plugin.ws_proc, args=(config,))
         ws_p.start()
-
-        # MISP  Input Plugin
-##        for inp in 
-        
-    except Exception: logging.error("Exception in archive()", exc_info=True)
-    
-### Get plugin configuration
-##with open('../config.json') as json_conf:
-##    conf = json.load(json_conf)
-##builtins._CONF = conf
-##
-### MISP Input Plugin
-##misp_lst = []
-##for inp in _CONF['input']:
-##    if inp['type'] == 'misp-api':
-##        all_org = inp['org']
-##        misp_inst = plugin.MispInst(inp, all_org)
-##        misp_lst.append(misp_inst)
-##
-##for misp_inst in misp_lst:
-##    misp_inst.run()
+    except Exception: logging.error("cybexp.api.input.input_main -- ", exc_info=True)
+    # MISP API
+    try:
+        misp_p = Thread(target=plugin.misp_proc, args=(config,))
+        misp_p.start()       
+    except Exception: logging.error("cybexp.api.input.input_main -- ", exc_info=True)
+    # MISP Json files 
+    try:
+        misp_file_p = Thread(target=plugin.misp_file_proc, args=(config,))
+        misp_file_p.start()
+    except Exception: logging.error("cybexp.api.input.input_main -- ", exc_info=True)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../input.log',
+    logging.basicConfig(filename = '../input.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../input.log',
 
     with open("../input_config.json") as f: input_config = json.load(f)
-    if not input_config: logging.warning("input.py: No input configuration found")
+    if not input_config: logging.warning("api.input.input -- No input configuration found")
     
     input_main(copy.deepcopy(input_config))

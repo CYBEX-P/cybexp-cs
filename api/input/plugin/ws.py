@@ -1,9 +1,10 @@
 from lomond import WebSocket
 from lomond.persist import persist
-import json, logging, pdb
 
 if __name__ == "__main__": from plugin_comm import *
 else: from .plugin_comm import *
+
+self.backend = get_backend() if os.getenv("_MONGO_URL") else backend
 
 class WsInp(CybInp):
     def __init__(self, api_url, api_token, **kwargs):
@@ -12,15 +13,14 @@ class WsInp(CybInp):
         super(WsInp, self).__init__(api_url, api_token, **kwargs)
         
     def __str__(self):
-        return('Websocket input, orgid = {}, typtag = {},'\
-               ' timezone = {}, url = {}'.format(self.orgid,
-               self.typtag, self.timezone, self.url))
+        return('Websocket input, orgid = {}, typtag = {}, timezone = {}, url = {}'.format(
+                self.orgid, self.typtag, self.timezone, self.url))
 
     def run(self):
         for event in persist(self.ws):
             if event.name == 'text':
-                r = self.post_event(event.json)
-                if not r.ok: logging.exception(str(r.status_code) + ' ' + r.reason)
+                rr = self.post_event(event.json)
+                [logging.exception(str(r.status_code) + ' ' + r.reason) for r in rr if not r.ok]
             else:
                 logging.info(event.name + ' ' + str(self))
 
@@ -38,6 +38,7 @@ def ws_proc(config):
 
             for wsi in wsi_lst:
                 wsi.run()
+                logging.info("cybexp.api.input.ws.ws_proc: This loop does not need threads")
                 
             n = 0
             
@@ -47,8 +48,7 @@ def ws_proc(config):
             n += 1
 
 if __name__ == "__main__":
-    with open("../../config.json") as f: config = json.load(f)
-    input_config = config.pop("input", None)
+    with open("../../input_config.json") as f: input_config = json.load(f)
     if not input_config: logging.error("plugin.ws: No input configuration found")
 
     ws_proc(input_config)

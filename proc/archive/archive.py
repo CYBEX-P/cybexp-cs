@@ -1,4 +1,4 @@
-import io, time, gridfs, logging, json, copy, pdb, random
+import io, time, gridfs, logging, json, copy, pdb, random, time, threading, multiprocessing
 from pymongo import MongoClient
 from pymongo.errors import CursorNotFound
 from Crypto.PublicKey import RSA
@@ -46,34 +46,52 @@ def exponential_backoff(n):
     s = max(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
     time.sleep(s)
 
+
+
+running = 0
+
+def archive_one(event, config):
+    cache_coll, archive_backend, fs, private_key_file_path =  decode_archive_config(config)
+    try: 
+        upload_time = event['datetime']
+        orgid = event['orgid']
+        typtag = event['typtag']
+        timezone = event['timezone']
+        fid = event['fid']
+        f = fs.get(fid)
+
+        data = str(decrypt_file(f, private_key_file_path))
+        pdb.set_trace()
+##        instance = parsemain(data, orgid, typtag, timezone, archive_backend)
+##
+##        cache_coll.update_one({"_id" : event["_id"]}, {"$set":{"processed":True}})
+    except:
+        logging.error("proc.archive.archive_one: ", exc_info=True)
+    
 def archive(config):
     n = 0
     while True:
         try:
             cache_coll, archive_backend, fs, private_key_file_path =  decode_archive_config(copy.deepcopy(config))
-        
-            cursor = cache_coll.find({"processed":False})
-            for event in cursor:
-                upload_time = event['datetime']
-                orgid = event['orgid']
-                typtag = event['typtag']
-                timezone = event['timezone']
-                fid = event['fid']
-                f = fs.get(fid)
-            
-                data = str(decrypt_file(f, private_key_file_path))
-                instance = parsemain(data, orgid, typtag, timezone, archive_backend)
-            
-                cache_coll.update_one({"_id" : event["_id"]}, {"$set":{"processed":True}})
-                n = 0
-            
+            cursor = cache_coll.find({"processed":False}).limit(1000)
+            for event in cursor: archive_one(event, copy.deepcopy(config))
+            event_is = [(event,copy.deepcopy(config)) for event in cursor]
+
+            t1 = time.time()
+            pool = multiprocessing.Pool(1)
+            results = pool.starmap(archive_one, event_is)
+            pool.close()
+            pool.join()
+            t2 = time.time()
+            print(t2-t1)
+            n = 0
         except CursorNotFound:
             exponential_backoff(n)
             n += 1
         except Exception:
             logging.error("proc.archive.archive: ", exc_info=True)
-            exponential_backoff(n)
-            n += 1
+            exponential_backoff(n)            
+
     
 if __name__ == "__main__":
     archive_config = { 
