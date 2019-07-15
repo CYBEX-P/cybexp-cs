@@ -4,8 +4,6 @@ from lomond.persist import persist
 if __name__ == "__main__": from plugin_comm import *
 else: from .plugin_comm import *
 
-self.backend = get_backend() if os.getenv("_MONGO_URL") else backend
-
 class WsInp(CybInp):
     def __init__(self, api_url, api_token, **kwargs):
         self.url = kwargs.pop('url')

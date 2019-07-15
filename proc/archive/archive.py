@@ -90,7 +90,8 @@ def archive(config):
             n += 1
         except Exception:
             logging.error("proc.archive.archive: ", exc_info=True)
-            exponential_backoff(n)            
+            exponential_backoff(n)
+            n += 1
 
     
 if __name__ == "__main__":

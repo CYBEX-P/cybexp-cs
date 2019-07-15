@@ -1,231 +1,253 @@
-import os, pdb, logging, pprint
-from datetime import datetime as dt
-from pymongo import MongoClient
-from tahoe import get_backend, NoBackend, MongoBackend, Attribute, Object, Event, Session, parse
+import os, logging, json
+from tahoe import get_backend, NoBackend, Attribute, Object, Event, Session, parse
 
-_PROJECTION = {"_id":0, "filters":0, "bad_data":0}
-_VALID_ATT = ['ipv4', 'country_code3', 'longitude', 'region_name', 'city_name', 'region_code', 'country_name', 'latitude', 'timezone', 'continent_code', 'country_code2']
+import pdb
+from pprint import pprint
 
-def filt_misp(backend=NoBackend()):
+_PROJECTION = {"_id":0, "filters":0, "_valid":0}
+_MAP_ATT = {
+            "aba-rtn":"aba_rtn",
+            "attachment":"filename",
+            "AS":"asn",
+            "bank-account-nr":"bank_ac_nr",
+            "bic":"swift_bic",
+            "campaign-name":"name",
+            "dns-soa-email":"soa_email",
+            "email-attachment":"filename",
+            "email-subject":"text",
+            "email-dst":"email_addr",
+            "email-src":"email_addr",
+            "github-repository":"url",
+            "github-username":"username",
+            "ip-src" : "ipv4",
+            "ip-dst":"ipv4",
+            "link":"url",
+            "mobile-application-id":"id",
+            "named pipe":"x_misp_named_pipe",
+            "pattern-in-file":"data",
+            "pattern-in-memory":"data",
+            "pattern-in-traffic":"data",
+            "pdb":"filepath",
+            "phone-number":"phone_number",
+            "prtn":"phone_number",
+            "sigma":"text",
+            "size-in-bytes":"size_bytes",
+            "snort":"snort_config",
+            "target-location":"country_code",
+            "target-org":"organization",
+            "target-external":"organization_name",
+            "threat-actor":"name",
+            "user-agent":"user_agent",
+            "whois-creation-date":"creation_date",
+            "whois-registrant-email":"registrant_email",
+            "whois-registrant-name":"registrant_name",
+            "whois-registrant-phone":"registrant_phone",
+            "whois-registrar":"registrar",
+            "windows-scheduled-task":"windows_scheduled_task",
+            "windows-service-name":"windows_service_name",
+            "x509-fingerprint-md5":"md5",
+            "x509-fingerprint-sha1":"sha1",
+            "x509-fingerprint-sha256":"sha256"}
+
+_MAP_OBJ = {
+            "aba-rtn":"bank_ac",
+            "AS":"autonomous_system",
+            "authentihash":"hash",
+            "bank-account-nr":"bank_ac",
+            "bic":"financial_institue",
+            "campaign-name":"campaign",
+            "dns-soa-email":"dns",
+            "email-attachment":"email_attachment",
+            "email-subject":"email_subject",
+            "email-dst":"dst",
+            "email-src":"src",
+            "filename":"file",
+            "github-repository":"github",
+            "github-username":"github",
+            "hostname":"host",
+            "imphash":"hash",
+            "ip-src": "src",
+            "ip-dst":"dst", 
+            "link":"url",
+            "md5":"hash",
+            "mobile-application-id":"mobile_app",
+            "named pipe":"x_misp_named_pipe",
+            "pattern-in-file":"file",
+            "pattern-in-memory":"pattern_in_memory",
+            "pattern-in-traffic":"pattern_in_traffic",
+            "pehash":"file",
+            "phone-number":"identity",
+            "prtn":"identity",
+            "regkey" : "registry",
+            "sha1":"hash",
+            "sha256":"hash",
+            "sigma":"x_misp_sigma",
+            "size-in-bytes":"size",
+            "snort":"ids_config",
+            "ssdeep":"hash",
+            "target-external":"target",
+            "target-location":"target",
+            "target-org":"target",
+            "threat-actor":"threat_actor",
+            "user-agent":"user_agent",
+            "whois-creation-date":"whois",
+            "whois-registrant-email":"whois",
+            "whois-registrant-name":"whois",
+            "whois-registrant-phone":"whois",
+            "whois-registrar":"whois",
+            "windows-scheduled-task":"windows_scheduled_task",
+            "windows-service-name":"windows_service",
+            "x509-fingerprint-md5":"x509",
+            "x509-fingerprint-sha1":"x509",
+            "x509-fingerprint-sha256":"x509",
+            "yara":"malware"}
+
+def filt_misp():
     try: 
-        filt_id = "filter--c5ec01a3-f646-402e-92c9-e15c321a9653"
-        query = {"raw_type":"x-misp-event", "filters":{"$ne": filt_id }, "_valid" : {"$ne" : False}}
-        if os.getenv("_MONGO_URL"): backend = get_backend()
+        filt_id = "filter--f2d1b00a-24fc-4faa-95aa-2932b3b400e5"
+        query = {"raw_type":"x-misp-event", "filters":{"$ne": filt_id },
+                 "_valid" : {"$ne" : False}}
+        backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
         cursor = backend.find(query, _PROJECTION)
         if not cursor: return False
         for raw in cursor:
-            j = Misp(raw)
-##            eventid = raw["data"]["eventid"]
-##            if   eventid == "cowrie.client.kex": j = ClientKex(raw)  
-##            elif eventid == "cowrie.client.size": j = ClientSize(raw)
-##            else:
-##                logging.warning("proc.analytics.filters.filt_cowrie.filt_cowrie: Unknown eventid: " + eventid)
+##            try:
+                j = Misp(raw) 
+##            except:
+##                logging.error("proc.analytics.filters.filt_misp.filt_misp: " \
+##                    "Unknown MISP Structure: \n" + json.dumps(raw,indent=4), exc_info=True)
 ##                continue
     except:
         logging.error("proc.analytics.analytics: ", exc_info=True)
 ##        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
         return False
-    else:
+##    else:
 ##        backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
     return True
 
 class Misp():
-    def __init__(self):
+    def __init__(self, raw):
+        try: 
+            self.raw, self.event, self.event_type = raw, raw["data"]["Event"], 'misp'
+            self.orgid, self.timestamp = self.raw.pop("orgid"), float(self.event.pop("timestamp"))
 
-        config = { 
-		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-		"analytics_db" : "tahoe_db",
-		"analytics_coll" : "instances"
-            }
-        os.environ["_MONGO_URL"] = config.pop("mongo_url")
-        os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_demo")
-        os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
-        self.raw, self.data, self.event_type = raw, raw["data"]["Event"], 'misp'
-        self.orgid = self.raw["orgid"]
-        self.timestamp = float(self.data["timestamp"])
-        
-    
-        
-        e = Event(self.event_type, self.orgid, self.objects, timestamp)
+            org_id_att = Attribute('id', self.event['Org'].pop('id'))
+            org_name_att = Attribute('name', self.event['Org'].pop('name'))
+            org_uuid_att = Attribute('uuid', self.event['Org'].pop('uuid'))
+            org_obj = Object("x_misp_org", [org_id_att, org_name_att, org_uuid_att])
+
+            orgc_id_att = Attribute('id', self.event['Orgc']['id'])
+            orgc_name_att = Attribute('name', self.event['Orgc'].pop('name'))
+            orgc_uuid_att = Attribute('uuid', self.event['Orgc'].pop('uuid'))
+            orgc_obj = Object("x_misp_orgc", [org_id_att, org_name_att, org_uuid_att])
+
+            event_id_obj = Object('id', Attribute('id', self.event.pop('id')))
+            event_uuid_obj = Object('uuid', Attribute('uuid', self.event.pop('uuid')))
+            info_obj = Object('info', Attribute('text', self.event.pop('info')))
+            threat_level_obj = Object('threat_level', Attribute('id', self.event.pop('threat_level_id')))
+
+
+            self.objects = [org_obj, orgc_obj, event_id_obj, info_obj, threat_level_obj]
+
+            misp_attribute = self.event.pop("Attribute")
+
+            ###############################
+            print("===========================================================\n"\
+                  "===========================================================\n"\
+                  "===========================================================\n"\
+                  "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"\
+                  "===========================================================\n")
+            pprint(self.event)
+            print('\n')
+            pprint(misp_attribute)
+            print('\n')
+            ################################################
+            
+            for attribute in misp_attribute:
+                comment_att = Attribute('comment', attribute.pop('comment'))
+                category_att = Attribute('x_misp_category', attribute.pop('category'))
+                uuid_att = Attribute('uuid', attribute.pop('uuid'))
+
+                misp_type = attribute.pop("type")
+                misp_value = attribute.pop("value")
+
+                if misp_type in ['filename|md5', 'filename|sha1', 'filename|sha256']:
+                    filename_type, hash_type = misp_type.split('|')
+                    filename_value, hash_value = misp_value.split('|')
+                    filename_att = Attribute(filename_type,filename_value)
+                    hash_att = Attribute(hash_type, hash_value)
+                    obj = Object('file', [filename_att, hash_att])
+
+                elif misp_type == 'regkey|value':
+                    regkey_value, value_value = misp_value.split('|')
+                    regkey_att = Attribute('regkey', regkey_value)
+                    value_att = Attribute('registry_value', value_value)
+                    obj = Object('registry', [regkey_att, value_att])
+
+                elif misp_type == 'malware-sample':
+                    filename_value, hash_value = misp_value.split('|')
+                    filename_att = Attribute('filename', filename_value)
+                    hash_att = Attribute('hash', hash_value)
+                    obj = Object('malware', [filename_att, hash_att])
+
+                elif misp_type == 'ip-dst|port':
+                    ipv4_val, port_val = misp_value.split('|')
+                    ipv4_att = Attribute('ipv4', ipv4_val)
+                    port_att = Attribute('port', port_val)
+                    obj = Object('dst', [ipv4_att, port_att])
+
+                elif misp_type == 'ip-src|port':
+                    ipv4_val, port_val = misp_value.split('|')
+                    ipv4_att = Attribute('ipv4', ipv4_val)
+                    port_att = Attribute('port', port_val)
+                    obj = Object('src', [ipv4_att, port_att])
+
+                elif misp_type == 'domain|ip':
+                    domain_val, ipv4_val = misp_value.split('|')
+                    ipv4_att =  Attribute('ipv4', ipv4_val)
+                    domain_att = Attribute('domain', domain)
+                    obj = Object('dns', [ipv4_att, domain_att])
+
+                else:
+                    if misp_type == "AS": misp_value = int(misp_value)
+                    
+                    att_type =  _MAP_ATT[misp_type] if misp_type in _MAP_ATT else misp_type
+                    att = Attribute(att_type, misp_value)
+
+                    obj_type =  _MAP_OBJ[misp_type] if misp_type in _MAP_OBJ else misp_type
+                    obj = Object(obj_type, [att, category_att, comment_att])
+
+                self.objects.append(obj)
+
+                ################################
+                pprint(att.document())
+                print('\n')
+                pprint(obj.document())
+                print('\n')
+                ################################
+                
+            
+            e = Event(self.event_type, self.orgid, self.objects, self.timestamp)
+
+        ###################################
+            pprint(e.document())
+            print('\n')
+            
+        except:
+            logging.error("Uh oh, ", exc_info=True)
+            pdb.set_trace()
+        ###################################
 
 
 
 if __name__ == "__main__":
     config = { 
 		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-		"analytics_db" : "tahoe_db",
+		"analytics_db" : "tahoe_demo",
 		"analytics_coll" : "instances"
             }
     os.environ["_MONGO_URL"] = config.pop("mongo_url")
-    os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
+    os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_demo")
     os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
 
     filt_misp()
-
-
-
-
-
-
-
-
-
-
-
-
-
-##
-##
-##class ClientKex(Cowrie):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_key_exchange'
-##
-##        encCS = [e.split('@')[0] for e in self.data["encCS"]]
-##        enc_att = [Attribute('encr_algo', enc_algo) for enc_algo in encCS]
-##        enc_obj = Object('encr_algo_set', enc_att)
-##
-##        compCS = self.data["compCS"]
-##        if compCS: comp_att = [Attribute('comp_algo', comp_algo) for comp_algo in compCS]
-##        else: comp_att = [Attribute('comp_algo', 'none')]
-##        comp_obj = Object('comp_algo_set', comp_att)
-##
-##        kexAlgs = [e.split('@')[0] for e in self.data["kexAlgs"]]
-##        kex_algo_att = [Attribute('kex_algo', kex_algo) for kex_algo in kexAlgs]
-##        kex_obj = Object('kex_algo_set', kex_algo_att)
-##
-##        keyAlgs = [e.split('@')[0] for e in self.data["keyAlgs"]]
-##        pub_key_algo_att = [Attribute('pub_key_algo', pub_key_algo) for pub_key_algo in keyAlgs]
-##        pub_key_obj = Object('pub_key_algo_set', pub_key_algo_att)
-##
-##        macCS = [e.split('@')[0] for e in self.data["macCS"]]
-##        mac_att = [Attribute('mac_algo', mac_algo) for mac_algo in macCS]
-##        mac_obj = Object('mac_algo_set', mac_att)
-##
-##        hash_obj = Object('hash', Attribute('hash', self.data['hassh']))
-##
-##        self.objects = [enc_obj, comp_obj, kex_obj, pub_key_obj, mac_obj, hash_obj]
-##        super().__init__()
-##
-##class ClientSize(Cowrie):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_client_size'
-##        height_att = Attribute('height', self.data["height"])
-##        width_att = Attribute('width', self.data["width"])
-##        ssh_obj = Object('ssh_client_size', [height_att, width_att])
-##        self.objects = [ssh_obj]
-##        super().__init__()
-##
-##class ClientVar(Cowrie):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_client_env'
-##        env_att = Attribute('text', self.data["msg"])
-##        ssh_obj = Object('ssh_client_env', [env_att])
-##        self.objects = [ssh_obj]
-##        super().__init__()
-##
-##class ClientVersion(Cowrie):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_version'
-##        ssh_version = self.data["version"]
-##        if ssh_version[0] == "'": ssh_version = ssh_version.replace("'", "")
-##        ssh_version_att = Attribute('ssh_version', ssh_version)
-##        ssh_obj = Object('ssh_version', ssh_version_att)
-##        self.objects = [ssh_obj]
-##        super().__init__()
-##
-##
-##class CommandInput(Cowrie):
-##    def __init__(self, raw, objects=[]):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'shell_command'
-##        self.objects = objects + [ Object('shell_command', Attribute('text', self.data["command"])) ]
-##        super().__init__()
-##
-##class CommandSuccess(CommandInput):
-##    def __init__(self, raw):
-##        objects = [Object('success', [Attribute('boolean', True)])]
-##        super().__init__(raw, objects)
-##
-##class CommandFailed(CommandInput):
-##    def __init__(self, raw):
-##        objects = [Object('success', [Attribute('boolean', False)])]
-##        super().__init__(raw, objects)
-##
-##class DirectTcpIp(Cowrie):
-##    def __init__(self):
-##        src_obj = Object('src', [Attribute('hostname', self.data['host']['name'])])
-##        dst_obj = Object('dst', [Attribute('url', self.data["dst_ip"])])
-##        dst_port_obj = Object('dst_port', [Attribute('port', self.data["dst_port"])])
-##        protocol_obj = Object('protocol', [Attribute('protocol', "TCP")])
-##
-##        self.objects += [src_obj, dst_obj, dst_port_obj, protocol_obj]
-##        super().__init__()
-##
-##class DirectTcpIpData(DirectTcpIp):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'network_traffic'
-##        data_obj = Object('data', Attribute('data', self.data["data"]))
-##        self.objects = [data_obj]
-##        super().__init__()
-##
-##class DirectTcpIpRequest(DirectTcpIp):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'network_traffic'
-##        src_port_obj = Object('src_port', [Attribute('port', self.data["src_port"])])
-##        self.objects = [src_port_obj]
-##        super().__init__()
-##
-##class Login(Cowrie):
-##    def __init__(self):
-##        login_obj = Object('login_credential', [Attribute('username', self.data["username"]),
-##                                                Attribute('password', self.data["password"])])
-##        self.objects += [login_obj]
-##        super().__init__()
-##
-##class LoginFailed(Login):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_login' 
-##        self.objects = [Object('success', [Attribute('boolean', False)])]
-##        super().__init__()
-##
-##class LoginSuccess(Login):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_login' 
-##        self.objects = [Object('success', [Attribute('boolean', True)])]
-##        super().__init__()      
-##        
-##class SessionClosed(Cowrie):
-##    def __init__(self, raw):
-##        self.raw, self.data = raw, raw["data"]
-##        session = self.get_session()
-##        timestamp = self.data["@timestamp"]
-##        end_time = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
-##        self.update = {"duration" : self.data["duration"], "end_time" : end_time}
-##        session.update(self.update)
-##                
-##class SessionConnect(Cowrie):
-##    def __init__(self, raw):
-##        self.raw, self.data = raw, raw["data"]
-##        session = self.get_session()
-##        timestamp = self.data["@timestamp"]
-##        start_time = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
-##        self.update = {"start_time" : start_time}
-##        session.update(self.update)
-##
-##class SessionFileDownload(Cowrie):
-##    def __init__(self, raw):
-##        self.raw, self.data, self.event_type = raw, raw["data"], 'file_download'
-##        self.objects = [Object('url', [Attribute('url', self.data['url'])])]
-##        filename_att = Attribute('filename', self.data['url'].split('/')[-1])
-##        try: sha256_att = Attribute('sha256', self.data['shasum'])
-##        except: self.objects += [Object('file', [filename_att]), Object('success', [Attribute('boolean', False)])]
-##        else: self.objects += [Object('file', [filename_att, sha256_att])]
-##        super().__init__()
-##
-##
-##    
-##
-##    
-##
-##
-##    
-##
