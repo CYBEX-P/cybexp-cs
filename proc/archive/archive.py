@@ -61,10 +61,9 @@ def archive_one(event, config):
         f = fs.get(fid)
 
         data = str(decrypt_file(f, private_key_file_path))
-        pdb.set_trace()
-##        instance = parsemain(data, orgid, typtag, timezone, archive_backend)
-##
-##        cache_coll.update_one({"_id" : event["_id"]}, {"$set":{"processed":True}})
+        instance = parsemain(data, orgid, typtag, timezone, archive_backend)
+
+        cache_coll.update_one({"_id" : event["_id"]}, {"$set":{"processed":True}})
     except:
         logging.error("proc.archive.archive_one: ", exc_info=True)
     
