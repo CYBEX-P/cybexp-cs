@@ -17,7 +17,6 @@ app.config['JWT_SECRET_KEY'] = 'jwt-secret-string'
 app.config['JWT_BLACKLIST_ENABLED'] = True
 app.config['JWT_BLACKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False
-app.config['MAX_CONTENT_LENGTH'] = 160 * 1024 * 1024
 
 db.init_app(app)
 migrate = Migrate(app, db)
@@ -41,10 +40,11 @@ api.add_resource(resources.UserLogoutRefresh, '/logout/refresh')
 api.add_resource(resources.TokenRefresh, '/token/refresh')
 api.add_resource(resources.AllUsers, '/users')
 api.add_resource(resources.SecretResource, '/secret')
-api.add_resource(views.Event,'/api/v1.0/event')
-##api.add_resource(views.Related,'/api/v1.0/related/')
+api.add_resource(views.Event, '/api/v1.0/event')
+api.add_resource(views.Related, '/api/v1.0/related/')
+api.add_resource(views.RelatedAttribute, '/api/v1.0/related/attribute')
+api.add_resource(views.RelatedAttributeSummary, '/api/v1.0/related/attribute/summary')
 ##api.add_resource(views.Count,'/api/v1.0/count/')
-
 
 if __name__=='__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)

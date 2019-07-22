@@ -1,59 +1,47 @@
 if __name__ == "__main__": from views_comm import *
 else: from .views_comm import * 
-
-
-# Load Report Database
-rcoll = coll_or_fs('report')
-
-def get_related(obj_typ, obj_val, **kwargs):
-    result_bundle = []
-
-    query = { "$and" : [ {"objects.0.type" : obj_typ} ]}
-    
-    # Take care of special structures
-    if obj_typ == 'file': query["$and"].append({"objects.0.hashes.SHA-256" : obj_val} )
-    else: query["$and"].append({"objects.0.value" : obj_val} )
-        
-    obj = rcoll.find_one(query, _PROJECTION)
-    if not obj: return None
-    
-    obj = stix2.parse(obj, allow_custom=True)
-    result_bundle.append(obj)
-
-    # Find all relations
-    query = {"$and" : [{"$or" : [{"source_ref" : obj["id"]},{"target_ref" : obj["id"]}]},
-            {"type" : "relationship"}, {"relationship_type" : {"$ne" : "filtered-from"}}]}
-    all_rels = rcoll.find(query, _PROJECTION)
-
-    # Find all related objects
-    for rel in all_rels:
-        if rel["source_ref"] == obj["id"] :
-            rel_objid = rel["target_ref"]
-        else: rel_objid = rel["source_ref"]
-        query = {"id" : rel_objid}
-        rel_obj = rcoll.find_one(query, _PROJECTION)
-
-        relation_obj = stix2.parse(rel)
-        related_obj = stix2.parse(rel_obj, allow_custom = True)
-        result_bundle.extend((relation_obj, related_obj))
-
-    result_bundle = stix2.Bundle(result_bundle)
-    return json.loads(result_bundle.serialize())
-
+from tahoe import Attribute, parse
+from flask_restful import Resource, reqparse
+import pdb
 
 rparser = reqparse.RequestParser()
+for att_type in _VALID_ATT: rparser.add_argument(att_type)
+rparser.add_argument('level', type=int)
 
-class Related(Report):
+class Related(Resource):
     def __init__(self):
-        super().__init__(example = { "ipv4" : "104.168.138.60" })
+        req = rparser.parse_args()
+        req = {k:v for k,v in req.items() if v is not None}
+        self.lvl = req.pop('level', 1)
+        self.att_type, self.value = list(req.items())[0]
 
     @jwt_required
     def post(self):
-        if not self.valid_att(rparser): return (self.response, self.status_code)
+        r = self.get_related()
+        return (r, 200)
+
+    def get_related(self, itype=None):
+            att = Attribute(self.att_type, self.value)
+            if itype: r = att.related(self.lvl, itype)
+            else: r = att.related(self.lvl)
+            e = []
+            for i in r: e.append(i)
+            return e
+
+class RelatedAttribute(Related):
+    def get_related(self):
+        return super().get_related("attribute")
+
+class RelatedAttributeSummary(RelatedAttribute):
+    def get_related(self):
+        att = Attribute(self.att_type, self.value)
+        r = att.related(self.lvl, "attribute", {"att_type":1,"value":1})
+        e = {}
+        for i in r:
+            t, v = i["att_type"], i["value"]
+            if t not in e: e[t] = [v]
+            else: e[t].append(v)
+        return e
         
-        # Get Related
-        r = get_related(self.obj_typ, self.obj_val)
-
-        if not r:  r = self.empty_stix2_bundle
-        return (r, 200)    
-
+        
+    
