@@ -95,7 +95,8 @@ def archive(config):
     
 if __name__ == "__main__":
     archive_config = { 
-		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+                "mongo_url" : "mongodb://134.197.21.231:27017/",
 		"cache_db" : "cache_test",
 		"cache_coll" : "file_entries",
 		"archive_db" : "tahoe_db",

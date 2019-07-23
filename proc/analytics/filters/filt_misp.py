@@ -28,9 +28,9 @@ _MAP_ATT = {
     "email-subject":["subject","email"],
     "email-x-mailer":["x_mailer","email"],
     "filename":["filename","file"],
-    "github-organisation":["organization"],
-    "github-repository":["repository"],
-    "github-username":["username"],
+    "github-organisation":["organization", "github"],
+    "github-repository":["repository", "github"],
+    "github-username":["username", "github"],
     "hex":["hex_data"],
     "hostname":["hostname"],
     "imphash":["imphash","file"],
@@ -80,7 +80,7 @@ _MAP_ATT = {
     "whois-registrant-email":["email_addr","registrant","whois"],
     "whois-registrant-name":["name","registrant","whois"],
     "whois-registrant-org":["organization","registrant","whois"],
-    "whois-registrant-phone":["phone","registrant","whois"],
+    "whois-registrant-phone":["phone_number","registrant","whois"],
     "whois-registrar":["registrar","whois"],
     "windows-scheduled-task":["win_scheduled_task"],
     "windows-service-displayname":["win_service_displayname"],
@@ -145,13 +145,14 @@ def filt_misp():
                 j = Misp(raw, backend)
             except:
                 logging.error("proc.analytics.filters.filt_misp.filt_misp.1: " \
-                    "Unknown MISP Structure: \n MISP Event id" + raw["data"]["Event"]["id"], exc_info=True)
+                    "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
+    except (KeyboardInterrupt, SystemExit): raise
     except:
         logging.error("proc.analytics.filters.filt_misp.filt_misp.2: ", exc_info=True)
-            backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
+##        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
         return False
-        else:
-            backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
+    else:
+        backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
     return True
 
 
@@ -244,9 +245,10 @@ class Misp():
 if __name__ == "__main__":
     config = { 
 ##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-                "mongo_url" : "mongodb://localhost:27017",
-##		"analytics_db" : "tahoe_db",
-                "analytics_db" : "tahoe_demo",
+                "mongo_url" : "mongodb://134.197.21.231:27017/",
+##                "mongo_url" : "mongodb://localhost:27017",
+		"analytics_db" : "tahoe_db",
+##                "analytics_db" : "tahoe_demo",
 		"analytics_coll" : "instances"
             }
     os.environ["_MONGO_URL"] = config.pop("mongo_url")

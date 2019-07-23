@@ -4,44 +4,50 @@ from pymongo import MongoClient
 from tahoe import get_backend, NoBackend, MongoBackend, Attribute, Object, Event, Session, parse
 
 _PROJECTION = {"_id":0, "filters":0, "_valid":0}
-_VALID_ATT = ['ipv4', 'country_code3', 'longitude', 'region_name', 'city_name', 'region_code', 'country_name', 'latitude', 'timezone', 'continent_code', 'country_code2']
+_GEOIP_ATT = ["city_name", "continent_code", "country_code2", "country_code3", "country_name",
+              "dma_code", "ip", "latitude", "longitude", "postal_code", "region_code", "region_name", "timezone"]
 
 def filt_cowrie(backend=NoBackend()):
-    try: 
-        filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
-        query = {"raw_type":"x-unr-honeypot", "filters":{"$ne":filt_id},
-                 "data.eventid":{"$exists":True}, "_valid" : {"$ne" : False}}
-        
-        backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
-        cursor = backend.find(query, _PROJECTION)
-        if not cursor: return False
-        for raw in cursor:
-            eventid = raw["data"]["eventid"]
-            if   eventid == "cowrie.client.kex": j = ClientKex(raw)  
-            elif eventid == "cowrie.client.size": j = ClientSize(raw)
-            elif eventid == "cowrie.client.var": j = ClientVar(raw)
-            elif eventid == "cowrie.client.version": j = ClientVersion(raw)
-            elif eventid == "cowrie.command.failed": j = CommandInput(raw)
-            elif eventid == "cowrie.command.input": j = CommandInput(raw)
-            elif eventid == "cowrie.command.success": j = CommandInput(raw)
-            elif eventid == "cowrie.direct-tcpip.data": j = DirectTcpIpData(raw) 
-            elif eventid == "cowrie.direct-tcpip.request": j = DirectTcpIpRequest(raw)
-            elif eventid == "cowrie.login.failed": j = LoginFailed(raw) 
-            elif eventid == "cowrie.login.success": j = LoginSuccess(raw)
-            elif eventid == "cowrie.session.closed": j = SessionClosed(raw)
-            elif eventid == "cowrie.session.connect": j = SessionConnect(raw)
-            elif eventid == "cowrie.session.file_download": j = SessionFileDownload(raw)
-            elif eventid == "cowrie.session.file_download.failed": j = SessionFileDownload(raw)
-            else:
-                logging.warning("proc.analytics.filters.filt_cowrie.filt_cowrie: Unknown eventid: " + eventid)
-                continue
-    except:
-        logging.error("proc.analytics.analytics: ", exc_info=True)
-        pdb.set_trace()
-##        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-        return False
-##    else:
-##        backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
+    while True:
+        try: 
+            filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
+            query = {"raw_type":"x-unr-honeypot", "filters":{"$ne":filt_id},
+                     "data.eventid":{"$exists":True}, "_valid" : {"$ne" : False}}
+            
+            backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
+            cursor = backend.find(query, _PROJECTION)
+            if not cursor: return False
+            for raw in cursor:
+                try:
+                    eventid = raw["data"]["eventid"]
+                    if   eventid == "cowrie.client.kex": j = ClientKex(raw)  
+                    elif eventid == "cowrie.client.size": j = ClientSize(raw)
+                    elif eventid == "cowrie.client.var": j = ClientVar(raw)
+                    elif eventid == "cowrie.client.version": j = ClientVersion(raw)
+                    elif eventid == "cowrie.command.failed": j = CommandInput(raw)
+                    elif eventid == "cowrie.command.input": j = CommandInput(raw)
+                    elif eventid == "cowrie.command.success": j = CommandInput(raw)
+                    elif eventid == "cowrie.direct-tcpip.data": j = DirectTcpIpData(raw) 
+                    elif eventid == "cowrie.direct-tcpip.request": j = DirectTcpIpRequest(raw)
+                    elif eventid == "cowrie.login.failed": j = LoginFailed(raw) 
+                    elif eventid == "cowrie.login.success": j = LoginSuccess(raw)
+                    elif eventid == "cowrie.session.closed": j = SessionClosed(raw)
+                    elif eventid == "cowrie.session.connect": j = SessionConnect(raw)
+                    elif eventid == "cowrie.session.file_download": j = SessionFileDownload(raw)
+                    elif eventid == "cowrie.session.file_download.failed": j = SessionFileDownload(raw)
+                    else:
+                        logging.warning("proc.analytics.filters.filt_cowrie.filt_cowrie: Unknown eventid: " + eventid)
+                        continue
+                except:
+                    logging.error("\n\n\n\nfilt_cowrie 1: eventid: " + eventid +
+                                  ", timestamp: " + raw["data"]["@timestamp"] +"\n\n\n\n\n", exc_info=True)
+                    
+        except:
+            logging.error("filt_cowrie 2: ", exc_info=True)
+    ##        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
+    ##        return False
+    ##    else:
+    ##        backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
     return True
 
 class Cowrie():
@@ -50,9 +56,10 @@ class Cowrie():
         timestamp = self.data["@timestamp"]
         timestamp = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
         
-        geoip_att = [Attribute(k, v) for k,v in self.data["geoip"].items() if k in  _VALID_ATT]
+        geoip_att = [Attribute(k, v) for k,v in self.data["geoip"].items() if k in  _GEOIP_ATT]
+        geoip_obj = Object('geoip', geoip_att)
         attacker_ip_att = Attribute('ipv4', self.data["src_ip"])
-        attacker_obj = Object('attacker', [attacker_ip_att] + geoip_att)
+        attacker_obj = Object('attacker', [attacker_ip_att, geoip_obj])
         self.objects.append(attacker_obj)
         
         e = Event(self.event_type, self.objects, self.orgid, timestamp, malicious=True)
@@ -75,12 +82,11 @@ class ClientKex(Cowrie):
         enc_algo = [Attribute('encr_algo', enc_algo) for enc_algo in encCS]
 
         compCS = self.data["compCS"]
-        if compCS: comp_att = [Attribute('comp_algo', comp_algo) for comp_algo in compCS]
+        if compCS: comp_algo = [Attribute('comp_algo', comp_algo) for comp_algo in compCS]
         else: comp_algo = [Attribute('comp_algo', 'none')]
 
         kexAlgs = [e.split('@')[0] for e in self.data["kexAlgs"]]
         kex_algo = [Attribute('kex_algo', kex_algo) for kex_algo in kexAlgs]
-
 
         keyAlgs = [e.split('@')[0] for e in self.data["keyAlgs"]]
         pub_key_algo = [Attribute('pub_key_algo', pub_key_algo) for pub_key_algo in keyAlgs]
@@ -90,7 +96,7 @@ class ClientKex(Cowrie):
 
         hash_att = Attribute('hash', self.data['hassh'])
 
-        ssh_obj = Object('ssh', [enc_algo, comp_algo, kex_algo, pub_key_algo, mac_algo, hash_att])
+        ssh_obj = Object('ssh', enc_algo + comp_algo + kex_algo + pub_key_algo + mac_algo + [hash_att])
 
         self.objects = [ssh_obj]
         super().__init__()
@@ -220,8 +226,9 @@ class SessionFileDownload(Cowrie):
 
 if __name__ == "__main__":
     config = { 
-		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
 ##                "mongo_url" : "mongodb://localhost:27017",
+                "mongo_url" : "mongodb://134.197.21.231:27017/",
 		"analytics_db" : "tahoe_db",
 ##                "analytics_db" : "tahoe_demo",
 		"analytics_coll" : "instances"
@@ -229,6 +236,8 @@ if __name__ == "__main__":
     os.environ["_MONGO_URL"] = config.pop("mongo_url")
     os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
     os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
+
+    logging.basicConfig(filename = 'debug.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
 
     filt_cowrie()    
 
