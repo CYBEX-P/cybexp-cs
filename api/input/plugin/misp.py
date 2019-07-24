@@ -50,19 +50,9 @@ def misp_proc(config):
         misp_list = []
         api_url = config['api_srv']['url']
         api_token = config['api_srv']['token']
-        for inp in config['input']:
-            if inp['type'] == 'misp-api':
-                try:
-                    mispi = MispInst(api_url, api_token, **inp)
-                    misp_list.append(mispi)
-                except Exception: logging.error("api.input.misp.misp_proc -- bad input.input config -- " + str(inp), exc_info=True)
-
-        for mispi in misp_list: mispi.run()
-        
+        misp_config = config['input']['misp-api']
+        MispInst(api_url, api_token, **misp_config).run()
     except Exception: logging.error("api.input.misp.misp_proc -- bad input config -- " + str(config), exc_info=True)
-
-
-
         
 
 if __name__ == "__main__":

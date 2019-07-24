@@ -40,8 +40,7 @@ def phishtank_fetch(config):
     while True:
         api_url = config["api_srv"]["url"]
         api_token = config["api_srv"]["token"]
-        phishtank_api_config = config["input"][3]
-        assert phishtank_api_config["type"] == "phishtank"
+        phishtank_api_config = config["input"]["phishtank"]
         PhishtankSource(api_url, api_token, **phishtank_api_config).run()
 
         logging.error("plugin.phishtank.phishtan-proc -- ", exc_info=True)

@@ -23,31 +23,29 @@ class MispFileInp(CybInp):
 
 
 def misp_file_proc(config):
-    n = 0
-##    while True:
+    n_failed_queries = 0    
     try:
         file_lst = []
         api_url = config['api_srv']['url']
         api_token = config['api_srv']['token']
-        for inp in config['input']:
-            if inp['type'] == 'misp_file':
-                loc = inp.pop('directory',None)
-                for filename in os.listdir(loc):
-                    if filename[-4:] == 'json':
-                        misp_filei = MispFileInp(api_url, api_token, os.path.join(loc,filename),**inp)
-                        file_lst.append(misp_filei)
+        misp_file_config = config['input']['misp_file']
+        loc = misp_file_config['directory']
+        for filename in os.listdir(loc):
+            if filename[-4:] == 'json':
+                misp_filei = MispFileInp(api_url, api_token, os.path.join(loc,filename),**misp_file_config)
+                file_lst.append(misp_filei)
                 
 
         for misp_filei in file_lst:
             misp_filei.run()
             logging.info("cybexp.api.input.file.file_proc: This loop does not need threads")
             
-        n = 0
+        n_failed_queries = 0
         
     except Exception:
         logging.error("plugin.file.file_proc -- ", exc_info=True)
-        exponential_backoff(n)
-        n += 1
+        exponential_backoff(n_failed_queries)
+        n_failed_queries += 1
 
 if __name__ == "__main__":
     with open("../../input_config.json") as f: input_config = json.load(f)

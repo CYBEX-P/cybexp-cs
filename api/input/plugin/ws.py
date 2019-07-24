@@ -23,27 +23,20 @@ class WsInp(CybInp):
                 logging.info(event.name + ' ' + str(self))
 
 def ws_proc(config):
-    n = 0
+    n_failed_queries = 0
     while True:
         try:
-            wsi_lst = []
-            api_url = config['api_srv']['url']
-            api_token = config['api_srv']['token']
-            for inp in config['input']:
-                if inp['type'] == 'websocket-client':
-                    wsi = WsInp(api_url, api_token, **inp)
-                    wsi_lst.append(wsi)
+            api_url = config["api_srv"]["url"]
+            api_token = config["api_srv"]["token"]
+            websocket_config = config["input"]["websocket-client"]
+            WsInp(api_url, api_token, **websocket_config).run()
+            n_failed_queries = 0
 
-            for wsi in wsi_lst:
-                wsi.run()
-                logging.info("cybexp.api.input.ws.ws_proc: This loop does not need threads")
-                
-            n = 0
-            
         except Exception:
             logging.error("plugin.ws.ws_proc -- ", exc_info=True)
-            exponential_backoff(n)
-            n += 1
+            exponential_backoff(n_failed_queries)
+            n_failed_queries += 1
+
 
 if __name__ == "__main__":
     with open("../../input_config.json") as f: input_config = json.load(f)
