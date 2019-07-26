@@ -13,11 +13,9 @@ def exponential_backoff(n):
 def infinite_worker(q):
     n = 0
     while not q.empty():
-        print(n)
-        items = q.get()
-        func, args =  items[0], items[1:]
+        func = q.get()
         try:
-            r = func(*args)
+            r = func()
             if not r:
                 exponential_backoff(n)
                 n += 1
@@ -25,7 +23,7 @@ def infinite_worker(q):
                 n = 0
 
         except Exception as exception:
-            logging.error("proc.analytics.analytics: ", exc_info=True)
+            logging.error("proc.analytics.infinite_worker: ", exc_info=True)
             exponential_backoff(n)
             n += 1
             
@@ -39,7 +37,9 @@ def analytics(config):
         os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
 
         q = Queue()
-        q.put([filt_misp])
+        q.put(filt_misp)
+        q.put(filt_cowrie)
+        
 
         infinite_worker(q)
 

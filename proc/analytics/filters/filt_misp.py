@@ -1,8 +1,22 @@
-import os, logging, json, copy, sys, time
+
+import os, logging, json, copy, sys, time, pdb
+from pprint import pprint
+
+if __name__ == "__main__":
+    config = { 
+##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+##                "mongo_url" : "mongodb://134.197.21.231:27017/",
+                "mongo_url" : "mongodb://localhost:27017",
+##		"analytics_db" : "tahoe_db",
+                "analytics_db" : "tahoe_demo",
+		"analytics_coll" : "instances"
+            }
+    os.environ["_MONGO_URL"] = config.pop("mongo_url")
+    os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
+    os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
+
 from tahoe import get_backend, NoBackend, Attribute, Object, Event, Session, parse
 
-import pdb
-from pprint import pprint
 
 _PROJECTION = {"_id":0, "filters":0, "_valid":0}
 _MAP_ATT = {
@@ -88,7 +102,7 @@ _MAP_ATT = {
     "x509-fingerprint-md5":["md5","fingerprint","x509"],
     "x509-fingerprint-sha1":["sha1","fingerprint","x509"],
     "x509-fingerprint-sha256":["sha256","fingerprint","x509"],
-    "yara":["yara","cti_analysis"],
+    "yara":["yara","cti_analysis"]
 }
 
 _MAP_SPLIT = {
@@ -115,44 +129,48 @@ _MAP_SPLIT = {
 }
 
 _ALIAS = {
-    "misp att" : ["misp alias"],
     "campaign-id" : ["campaign_id"],
     "campaign-name" : ["campaign_name"],
     "dns-soa-email" : ["dns_soa_email"],
     "email-attachment" : ["email_attachment_name"],
-    "email-body" : ["email_body	"],
+    "email-body" : ["email_body"],
     "email-reply-to" : ["email_reply_to"],
+    "jabber-id" : ["jabber_id"],
     "pattern-in-file" : ["pattern_in_file"],
-    "pattern-in-memory" : ["pattern_in_file"],
-    "pattern-in-traffic" : ["pattern_in_file"],
-    "target-external" : ["target_name, x_misp_target_external"],
+    "pattern-in-memory" : ["pattern_in_memory"],
+    "pattern-in-traffic" : ["pattern_in_traffic"],
+    "size-in-bytes" : ["size_in_bytes"],
+    "target-external" : ["target_name", "x_misp_target_external"],
     "target-location" : ["x_misp_target_location"],
-    "target-org" : ["target_name, x_misp_target_org"],
-    "target-user" : ["target_name, x_misp_target_user"],
-    "threat-actor" : ["threat_actor_name"]
+    "target-org" : ["target_name", "x_misp_target_org"],
+    "target-user" : ["target_name", "x_misp_target_user"],
+    "threat-actor" : ["threat_actor_name"],
+    "twitter-id" : ["twitter_id"],
+    "x509-fingerprint-md5" : ["x509_fingerprint", "x509_fingerprint_md5"],
+    "x509-fingerprint-sha1" : ["x509_fingerprint", "x509_fingerprint_sha1"],
+    "x509-fingerprint-sha256" : ["x509_fingerprint", "x509_fingerprint_sha256"]
 }
 
 def filt_misp():
     try: 
         filt_id = "filter--f2d1b00a-24fc-4faa-95aa-2932b3b400e5"
-        query = {"raw_type":"x-misp-event", "filters":{"$ne":filt_id}, "_valid":{"$ne":False}}
+        query = {"raw_type":"x-misp-event", "filters":{"$ne":filt_id}, "_valid":{"$ne":False}, "data.Event.id":{"$in":["70"]}}
         backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
-
         cursor = backend.find(query, _PROJECTION, no_cursor_timeout=True)
         if not cursor: return False
         for raw in cursor:
-            try:
-                j = Misp(raw, backend)
+            try: j = Misp(raw, backend)
             except:
-                logging.error("proc.analytics.filters.filt_misp.filt_misp.1: " \
+                logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
                     "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
+##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
+##            else: backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
+
+
     except (KeyboardInterrupt, SystemExit): raise
     except:
         logging.error("proc.analytics.filters.filt_misp.filt_misp.2: ", exc_info=True)
-##        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
         return False
-    else:
-        backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
     return True
 
 
@@ -167,20 +185,12 @@ class Misp():
         attribute, related = e["Attribute"], e["RelatedEvent"]
         event_type, orgid, timestamp = 'misp', raw["orgid"], float(e["timestamp"])
 
-        t1 = time.time()
         org, orgc = self.parse_org(e['Org']), self.parse_org(e['Orgc'])
-        t2 = time.time()
         eid, euuid = MispAttribute('id', e['id']), MispAttribute('uuid', e['uuid'])
-        t3 = time.time()
         info = MispAttribute('info', e['info'])
-        t4 = time.time()
         threat_level = MispAttribute('x_misp_threat_level_id', e['threat_level_id'])
-        t5 = time.time()
         data = [org, orgc, eid, euuid, info, threat_level]
 
-        print("%.2f\t%.2f\t%.2f\t%.2f" % (t2-t1,t3-t2,t4-t3,t5-t4))
-
-        t1 = time.time()
         for att in attribute:
             comment = MispAttribute('comment', att['comment'])
             category = MispAttribute('x_misp_category', att['category'])
@@ -196,31 +206,24 @@ class Misp():
                 type_list = _MAP_ATT[t]
                 obj = [self.create_att_obj(copy.deepcopy(type_list), v)]
             data += obj
-##        print(time.time() - t1)
 
-        t1 = time.time()
         event = Event(event_type, data, orgid, timestamp)
-##        print(time.time() - t1)
 
         rid = event.data['id']
         eid = rid[0]
-        t1 = time.time()
         for s in backend.find({"itype":"session", "data.x_misp_related_events.x_misp_event_id":eid}):
             s = parse(s, backend, False)
             s.add_event(event)
-        t2 = time.time()
-##        print(t2-t1)
 
         for re in related: rid.append(re['Event']['id'])
         ratt = [MispAttribute("x_misp_event_id", i) for i in rid]
-        t1 = time.time()
         s = Session("misp_session", ratt)
-        t2  = time.time()
         s.add_event(event)
-        t3 = time.time()
-##        print(t2-t1)
-##        print(t3-t2)
-        
+
+        raw = parse(raw)
+        ref_uuid_list = event.related_uuid() + [s.uuid]
+        raw.update_ref(ref_uuid_list)
+
 
     def create_att_obj(self, type_list, data):
         previous = MispAttribute(type_list.pop(0), data)
@@ -241,18 +244,5 @@ class Misp():
         return (t1,v1),(t2,v2)
     
 
-
-if __name__ == "__main__":
-    config = { 
-##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-                "mongo_url" : "mongodb://134.197.21.231:27017/",
-##                "mongo_url" : "mongodb://localhost:27017",
-		"analytics_db" : "tahoe_db",
-##                "analytics_db" : "tahoe_demo",
-		"analytics_coll" : "instances"
-            }
-    os.environ["_MONGO_URL"] = config.pop("mongo_url")
-    os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
-    os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
-
-    filt_misp()
+if __name__ == "__main__": filt_misp()
+ 

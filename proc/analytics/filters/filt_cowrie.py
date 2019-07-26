@@ -1,4 +1,4 @@
-import os, pdb, logging
+import os, pdb, logging, time
 from datetime import datetime as dt
 from pymongo import MongoClient
 from tahoe import get_backend, NoBackend, MongoBackend, Attribute, Object, Event, Session, parse
@@ -8,46 +8,48 @@ _GEOIP_ATT = ["city_name", "continent_code", "country_code2", "country_code3", "
               "dma_code", "ip", "latitude", "longitude", "postal_code", "region_code", "region_name", "timezone"]
 
 def filt_cowrie(backend=NoBackend()):
-    while True:
-        try: 
-            filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
-            query = {"raw_type":"x-unr-honeypot", "filters":{"$ne":filt_id},
-                     "data.eventid":{"$exists":True}, "_valid" : {"$ne" : False}}
-            
-            backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
-            cursor = backend.find(query, _PROJECTION)
-            if not cursor: return False
-            for raw in cursor:
-                try:
-                    eventid = raw["data"]["eventid"]
-                    if   eventid == "cowrie.client.kex": j = ClientKex(raw)  
-                    elif eventid == "cowrie.client.size": j = ClientSize(raw)
-                    elif eventid == "cowrie.client.var": j = ClientVar(raw)
-                    elif eventid == "cowrie.client.version": j = ClientVersion(raw)
-                    elif eventid == "cowrie.command.failed": j = CommandInput(raw)
-                    elif eventid == "cowrie.command.input": j = CommandInput(raw)
-                    elif eventid == "cowrie.command.success": j = CommandInput(raw)
-                    elif eventid == "cowrie.direct-tcpip.data": j = DirectTcpIpData(raw) 
-                    elif eventid == "cowrie.direct-tcpip.request": j = DirectTcpIpRequest(raw)
-                    elif eventid == "cowrie.login.failed": j = LoginFailed(raw) 
-                    elif eventid == "cowrie.login.success": j = LoginSuccess(raw)
-                    elif eventid == "cowrie.session.closed": j = SessionClosed(raw)
-                    elif eventid == "cowrie.session.connect": j = SessionConnect(raw)
-                    elif eventid == "cowrie.session.file_download": j = SessionFileDownload(raw)
-                    elif eventid == "cowrie.session.file_download.failed": j = SessionFileDownload(raw)
-                    else:
-                        logging.warning("proc.analytics.filters.filt_cowrie.filt_cowrie: Unknown eventid: " + eventid)
-                        continue
-                except:
-                    logging.error("\n\n\n\nfilt_cowrie 1: eventid: " + eventid +
-                                  ", timestamp: " + raw["data"]["@timestamp"] +"\n\n\n\n\n", exc_info=True)
-                    
-        except:
-            logging.error("filt_cowrie 2: ", exc_info=True)
-    ##        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-    ##        return False
-    ##    else:
-    ##        backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
+    try: 
+        filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
+        query = {"raw_type":"x-unr-honeypot", "filters":{"$ne":filt_id},
+                 "data.eventid":{"$exists":True}, "_valid" : {"$ne" : False}}
+        
+        backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
+        cursor = backend.find(query, _PROJECTION)
+        if not cursor: return False
+        for raw in cursor:
+            try:
+                t1 = time.time()
+                eventid = raw["data"]["eventid"]
+                if   eventid == "cowrie.client.kex": j = ClientKex(raw)  
+                elif eventid == "cowrie.client.size": j = ClientSize(raw)
+                elif eventid == "cowrie.client.var": j = ClientVar(raw)
+                elif eventid == "cowrie.client.version": j = ClientVersion(raw)
+                elif eventid == "cowrie.command.failed": j = CommandInput(raw)
+                elif eventid == "cowrie.command.input": j = CommandInput(raw)
+                elif eventid == "cowrie.command.success": j = CommandInput(raw)
+                elif eventid == "cowrie.direct-tcpip.data": j = DirectTcpIpData(raw) 
+                elif eventid == "cowrie.direct-tcpip.request": j = DirectTcpIpRequest(raw)
+                elif eventid == "cowrie.login.failed": j = LoginFailed(raw) 
+                elif eventid == "cowrie.login.success": j = LoginSuccess(raw)
+                elif eventid == "cowrie.session.closed": j = SessionClosed(raw)
+                elif eventid == "cowrie.session.connect": j = SessionConnect(raw)
+                elif eventid == "cowrie.session.file_download": j = SessionFileDownload(raw)
+                elif eventid == "cowrie.session.file_download.failed": j = SessionFileDownload(raw)
+                else:
+                    logging.warning("filt_cowrie 0: Unknown eventid: " + eventid)
+            except (KeyboardInterrupt, SystemExit): raise
+            except:
+                logging.error("\n\n\n\nfilt_cowrie 1: eventid: " + eventid +
+                              ", timestamp: " + raw["data"]["@timestamp"] +"\n\n", exc_info=True)
+##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
+            else:
+                backend.update_one({"uuid":raw["uuid"]}, {"$addToSet":{"filters":filt_id}})
+                t2 = time.time()
+                logging.info("{}\t\t\t{:.2f}".format(eventid, t2-t1))
+        
+    except:
+        logging.error("filt_cowrie 2: ", exc_info=True)
+        return False
     return True
 
 class Cowrie():
@@ -56,19 +58,27 @@ class Cowrie():
         timestamp = self.data["@timestamp"]
         timestamp = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
         
-        geoip_att = [Attribute(k, v) for k,v in self.data["geoip"].items() if k in  _GEOIP_ATT]
-        geoip_obj = Object('geoip', geoip_att)
-        attacker_ip_att = Attribute('ipv4', self.data["src_ip"])
-        attacker_obj = Object('attacker', [attacker_ip_att, geoip_obj])
+        attacker_ip_att = Attribute('ipv4', self.data["src_ip"], alias=['attacker_ip'])
+        attacker_obj_data = [attacker_ip_att]
+        if "geoip" in self.data["tags"]:
+            geoip_att = [Attribute(k, v) for k,v in self.data["geoip"].items() if k in  _GEOIP_ATT]
+            geoip_obj = Object('geoip', geoip_att)
+            attacker_obj_data.append(geoip_obj)
+        attacker_obj = Object('attacker', attacker_obj_data)
         self.objects.append(attacker_obj)
-        
+
         e = Event(self.event_type, self.objects, self.orgid, timestamp, malicious=True)
+
         session = self.get_session()
         session.add_event(e)
 
+        raw = parse(self.raw)
+        ref_uuid_list = e.related_uuid() + [session.uuid]
+        raw.update_ref(ref_uuid_list)
+
     def get_session(self):
         sessionid = self.data['session']
-        sessionid_att = Attribute('x_cowrie_sessionid', sessionid)
+        sessionid_att = Attribute('sessionid', sessionid, alias=['x_cowrie_sessionid'])
         hostname = self.data['host']['name']
         hostname_att = Attribute('hostname', hostname)
         session = Session('cowrie_session', [sessionid_att, hostname_att])
@@ -76,7 +86,7 @@ class Cowrie():
 
 class ClientKex(Cowrie):
     def __init__(self, raw):
-        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_key_exchange'
+        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh'
 
         encCS = [e.split('@')[0] for e in self.data["encCS"]]
         enc_algo = [Attribute('encr_algo', enc_algo) for enc_algo in encCS]
@@ -94,39 +104,36 @@ class ClientKex(Cowrie):
         macCS = [e.split('@')[0] for e in self.data["macCS"]]
         mac_algo = [Attribute('mac_algo', mac_algo) for mac_algo in macCS]
 
-        hash_att = Attribute('hash', self.data['hassh'])
+        hash_att = Attribute('hash', self.data['hassh'], alias=['ssh_kex_hash'])
 
-        ssh_obj = Object('ssh', enc_algo + comp_algo + kex_algo + pub_key_algo + mac_algo + [hash_att])
+        ssh_obj = Object('ssh_key_exchange', enc_algo + comp_algo + kex_algo + pub_key_algo + mac_algo + [hash_att])
 
         self.objects = [ssh_obj]
         super().__init__()
 
 class ClientSize(Cowrie):
     def __init__(self, raw):
-        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_client_size'
+        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh'
         height_att = Attribute('height', self.data["height"])
         width_att = Attribute('width', self.data["width"])
-        client_size = Object('ssh_client_size', [height_att, width_att])
-        ssh_obj = Object('ssh', client_size)
-        self.objects = [ssh_obj]
+        ssh_client_size_obj = Object('ssh_client_size', [height_att, width_att])
+        self.objects = [ssh_client_size_obj]
         super().__init__()
 
 class ClientVar(Cowrie):
     def __init__(self, raw):
-        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_client_env'
+        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh'
         env_att = Attribute('ssh_client_env', self.data["msg"])
-        ssh_obj = Object('ssh', [env_att])
-        self.objects = [ssh_obj]
+        self.objects = [env_att]
         super().__init__()
 
 class ClientVersion(Cowrie):
     def __init__(self, raw):
-        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_version'
+        self.raw, self.data, self.event_type = raw, raw["data"], 'ssh'
         ssh_version = self.data["version"]
         if ssh_version[0] == "'": ssh_version = ssh_version.replace("'", "")
         ssh_version_att = Attribute('ssh_version', ssh_version)
-        ssh_obj = Object('ssh', ssh_version_att)
-        self.objects = [ssh_obj]
+        self.objects = [ssh_version_att]
         super().__init__()
 
 
@@ -199,8 +206,8 @@ class SessionClosed(Cowrie):
         session = self.get_session()
         timestamp = self.data["@timestamp"]
         end_time = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
-        self.update = {"duration" : self.data["duration"], "end_time" : end_time}
-        session.update(self.update)
+        update = {"duration" : self.data["duration"], "end_time" : end_time}
+        session.update(update)
                 
 class SessionConnect(Cowrie):
     def __init__(self, raw):
