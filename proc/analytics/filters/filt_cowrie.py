@@ -18,7 +18,6 @@ def filt_cowrie(backend=NoBackend()):
         if not cursor: return False
         for raw in cursor:
             try:
-                t1 = time.time()
                 eventid = raw["data"]["eventid"]
                 if   eventid == "cowrie.client.kex": j = ClientKex(raw)  
                 elif eventid == "cowrie.client.size": j = ClientSize(raw)
@@ -42,10 +41,9 @@ def filt_cowrie(backend=NoBackend()):
                 logging.error("\n\n\n\nfilt_cowrie 1: eventid: " + eventid +
                               ", timestamp: " + raw["data"]["@timestamp"] +"\n\n", exc_info=True)
 ##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-            else:
-                backend.update_one({"uuid":raw["uuid"]}, {"$addToSet":{"filters":filt_id}})
-                t2 = time.time()
-                logging.info("{}\t\t\t{:.2f}".format(eventid, t2-t1))
+##            else:
+##                backend.update_one({"uuid":raw["uuid"]}, {"$addToSet":{"filters":filt_id}})
+
         
     except:
         logging.error("filt_cowrie 2: ", exc_info=True)

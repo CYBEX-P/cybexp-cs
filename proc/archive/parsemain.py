@@ -1,21 +1,19 @@
-#parsemain.py
-import json
-from parsescripts import *
+from tahoe import Raw
+import pdb, logging
 
-def parsemain(lf, orgid, typtag, tzname):
-    if isinstance(lf, bytes): lf = lf.decode() 
-    lf = lf.split('\r\n')
-    json_val = []
-    for line in lf:
-        if typtag == 'unr-honeypot':
-            e = parse_unr_honeypot(line, orgid, tzname)
+class  MispRaw(Raw):
+    def duplicate(self): return self.backend.find_one({"raw_type": "x-misp-event", "data.Event.id" : self.data["Event"]["id"]})
+
+
+def parsemain(typtag, orgid, timezone, data):
+    try: 
+        orgid = 'identity--'+orgid
+        if typtag == "misp-api": raw = MispRaw("x-misp-event", data, orgid, timezone)
+        elif typtag == "unr-honeypot": raw = Raw("x-unr-honeypot", data, orgid, timezone)
         else:
-            print("Unknown file type (typtag): " + typtag)
-            continue
-       
-    return json_val
-
-
-
-
-
+            raw = None
+            logging.warning("\nproc.archive.parsemain -- Unknown typtag : " + str(typtag))
+        return raw
+    except:
+        logging.error("\nproc.archive.parsemain -- " + str(typtag), exc_info=True)
+        pdb.set_trace()

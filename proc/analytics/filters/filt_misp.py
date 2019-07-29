@@ -4,11 +4,10 @@ from pprint import pprint
 
 if __name__ == "__main__":
     config = { 
-##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-##                "mongo_url" : "mongodb://134.197.21.231:27017/",
-                "mongo_url" : "mongodb://localhost:27017",
-##		"analytics_db" : "tahoe_db",
-                "analytics_db" : "tahoe_demo",
+		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+##                "mongo_url" : "mongodb://localhost:27017",
+		"analytics_db" : "tahoe_db",
+##                "analytics_db" : "tahoe_demo",
 		"analytics_coll" : "instances"
             }
     os.environ["_MONGO_URL"] = config.pop("mongo_url")
@@ -154,15 +153,23 @@ _ALIAS = {
 def filt_misp():
     try: 
         filt_id = "filter--f2d1b00a-24fc-4faa-95aa-2932b3b400e5"
-        query = {"raw_type":"x-misp-event", "filters":{"$ne":filt_id}, "_valid":{"$ne":False}, "data.Event.id":{"$in":["70"]}}
+        query = {"raw_type":"x-misp-event", "filters":{"$ne":filt_id}, "_valid":{"$ne":False}}
         backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
         cursor = backend.find(query, _PROJECTION, no_cursor_timeout=True)
         if not cursor: return False
+
+        from collections import defaultdict
+        count = defaultdict(int)
         for raw in cursor:
-            try: j = Misp(raw, backend)
-            except:
-                logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
-                    "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
+
+            count[raw["data"]["Event"]["id"]] += 1
+
+        pdb.set_trace()
+            
+##            try: j = Misp(raw, backend)
+##            except:
+##                logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
+##                    "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
 ##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
 ##            else: backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
 
