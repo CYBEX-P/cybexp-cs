@@ -1,54 +1,47 @@
 #!/usr/bin/env python3
 
-import bz2, gzip, json, logging, requests, time
+import bz2, gzip
 
 if __name__ == "__main__":
-    from plugin_comm import *
+    from common import *
 else:
-    from .plugin_comm import *
+    from .common import *
 
 URL = "http://data.phishtank.com/data/"
 COMPRESS_ALGO = ".bz2"  # need '.' for string fmt
 
 decompress_algos = {".bz2": bz2.decompress, ".gz": gzip.decompress}
 
+logging.basicConfig(level=logging.INFO)
 
-class PhishtankSource(CybInp):
-    def __init__(self, api_url, api_token, **kwargs):
-        self.phishtank_api_key = kwargs.pop("phishtank_api_key")
-        super(PhishtankSource, self).__init__(api_url, api_token, **kwargs)
 
-    def run(self):
+class PhishtankSource(CybexSource):
+    def fetch(self):
+        logging.info(f"Retrieving events from Phishtank at {URL}")
         response = requests.get(
             f"{URL}/{self.phishtank_api_key}/online-valid.json{COMPRESS_ALGO}"
         )
 
         if COMPRESS_ALGO:
+            logging.info(f"Decompressing API response from Phishtank with {COMPRESS_ALGO}")
             text = decompress_algos[COMPRESS_ALGO](response.content)
         else:
             text = response.text
 
         events = json.loads(text)
-        print(f"Retrieved {len(events)} records from PhishTank. Posting...")
-        self.post_event(events)
-
-        print("Done, sleeping.")
-        time.sleep(10)
+        logging.info(f"Retrieved {len(events)} records from PhishTank.")
+        self.post_event_to_cybex_api(events)
 
 
-def phishtank_fetch(config):
-    while True:
-        api_url = config["api_srv"]["url"]
-        api_token = config["api_srv"]["token"]
-        phishtank_api_config = config["input"]["phishtank"]
-        PhishtankSource(api_url, api_token, **phishtank_api_config).run()
+def phishtank_fetch():
+    config_file = get_config_file()
+    api_config = config_file["api_srv"]
+    phishtank_config = config_for_source_type(config_file, "phishtank")
 
-        logging.error("plugin.phishtank.phishtan-proc -- ", exc_info=True)
+    phishtank_source = PhishtankSource(api_config, phishtank_config)
+
+    CybexSourceFetcher(phishtank_source, max_daily_fetches=2).run()
 
 
 if __name__ == "__main__":
-    print("Querying Phishtank API from a CLI.")
-    with open("../../input_config.json") as f:
-        input_config = json.load(f)
-
-    phishtank_fetch(input_config)
+    phishtank_fetch()
