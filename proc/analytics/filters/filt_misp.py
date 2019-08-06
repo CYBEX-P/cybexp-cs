@@ -157,21 +157,13 @@ def filt_misp():
         backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
         cursor = backend.find(query, _PROJECTION, no_cursor_timeout=True)
         if not cursor: return False
-
-        from collections import defaultdict
-        count = defaultdict(int)
-        for raw in cursor:
-
-            count[raw["data"]["Event"]["id"]] += 1
-
-        pdb.set_trace()
-            
-##            try: j = Misp(raw, backend)
-##            except:
-##                logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
-##                    "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
+        for raw in cursor:           
+            try: j = Misp(raw, backend)
+            except:
+                logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
+                    "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
 ##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-##            else: backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
+            else: backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
 
 
     except (KeyboardInterrupt, SystemExit): raise
@@ -193,6 +185,7 @@ class Misp():
         event_type, orgid, timestamp = 'misp', raw["orgid"], float(e["timestamp"])
 
         org, orgc = self.parse_org(e['Org']), self.parse_org(e['Orgc'])
+        org, orgc = Object('x-misp-org', [org]), Object('x-misp-orgc', [orgc])
         eid, euuid = MispAttribute('id', e['id']), MispAttribute('uuid', e['uuid'])
         info = MispAttribute('info', e['info'])
         threat_level = MispAttribute('x_misp_threat_level_id', e['threat_level_id'])

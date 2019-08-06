@@ -30,10 +30,12 @@ class CybInp():
             headers={'Authorization': 'Bearer '+ self.token}
 
             try:
-                with requests.post(self.post_url, files=files, headers=headers, data = {
-                'orgid': self.orgid, 'typtag': self.typtag, 'timezone': self.timezone}) as r:
-                    rr.append((r.status_code, r.content))
-                    r.close()
+                with requests.post(self.post_url, files=files, headers=headers,
+                                   data = {'orgid': self.orgid,
+                                           'typtag': self.typtag,
+                                           'timezone': self.timezone}) as r:
+                    rr.append(r)
+
             except requests.exceptions.ConnectionError:
                 logging.error("api.input.plugin.plugin_comm.CybInp -- \n" + e , exc_info=True)
             

@@ -10,8 +10,7 @@ ps -ef | grep python
 kill -9 xxxx
 
 # 1. Activate Virtual Environment
-source ~/.bashrc
-workon cybexp
+source ~/venv/bin/activate
 
 # 2. Run Flask API:
 cd ~/cybexp/api/api

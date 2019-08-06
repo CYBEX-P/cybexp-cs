@@ -1,6 +1,19 @@
 import os, pdb, logging, time
 from datetime import datetime as dt
 from pymongo import MongoClient
+
+if __name__ == "__main__":
+    config = { 
+		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+##                "mongo_url" : "mongodb://localhost:27017",
+		"analytics_db" : "tahoe_db",
+##                "analytics_db" : "tahoe_demo",
+		"analytics_coll" : "instances"
+            }
+    os.environ["_MONGO_URL"] = config.pop("mongo_url")
+    os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
+    os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
+    
 from tahoe import get_backend, NoBackend, MongoBackend, Attribute, Object, Event, Session, parse
 
 _PROJECTION = {"_id":0, "filters":0, "_valid":0}
@@ -41,8 +54,8 @@ def filt_cowrie(backend=NoBackend()):
                 logging.error("\n\n\n\nfilt_cowrie 1: eventid: " + eventid +
                               ", timestamp: " + raw["data"]["@timestamp"] +"\n\n", exc_info=True)
 ##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-##            else:
-##                backend.update_one({"uuid":raw["uuid"]}, {"$addToSet":{"filters":filt_id}})
+            else:
+                backend.update_one({"uuid":raw["uuid"]}, {"$addToSet":{"filters":filt_id}})
 
         
     except:
@@ -195,7 +208,7 @@ class LoginFailed(Login):
 class LoginSuccess(Login):
     def __init__(self, raw):
         self.raw, self.data, self.event_type = raw, raw["data"], 'ssh_login' 
-        self.objects = [Attribute('sucess', True)]
+        self.objects = [Attribute('success', True)]
         super().__init__()      
         
 class SessionClosed(Cowrie):
@@ -229,20 +242,9 @@ class SessionFileDownload(Cowrie):
 
     
 
-if __name__ == "__main__":
-    config = { 
-##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-##                "mongo_url" : "mongodb://localhost:27017",
-                "mongo_url" : "mongodb://134.197.21.231:27017/",
-		"analytics_db" : "tahoe_db",
-##                "analytics_db" : "tahoe_demo",
-		"analytics_coll" : "instances"
-            }
-    os.environ["_MONGO_URL"] = config.pop("mongo_url")
-    os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
-    os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
 
-    logging.basicConfig(filename = 'debug.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
 
     filt_cowrie()    
 

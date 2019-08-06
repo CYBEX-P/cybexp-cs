@@ -14,7 +14,7 @@ def infinite_worker(q):
         try:
             r = func()
             if not r:
-                exponential_backoff(n)
+                exponential_backoff(n_failed_attempts)
                 n_failed_attempts += 1
             else:
                 n_failed_attempts = 0
@@ -51,11 +51,6 @@ if __name__ == "__main__":
 		"analytics_coll" : "instances"
             }
 
-    analytics_config = { 
-                "mongo_url" : "mongodb://localhost:27017",
-                "analytics_db" : "tahoe_demo",
-		"analytics_coll" : "instances"
-            }
 
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
  
