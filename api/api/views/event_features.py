@@ -20,12 +20,7 @@ class EventFeatures(Resource):
         limit = min(req.pop('limit',100),1000)
         
         rp = Report()
-        events = rp.events(limit, max(page_no-1,0))
-
-        result = {}
-        for e in events:
-            e = parse(e)
-            result[e.uuid] = e.feature()
+        result = rp.event_features(limit, max(page_no-1,0))
 
         return (result, 200)
         
