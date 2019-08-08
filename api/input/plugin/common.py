@@ -1,5 +1,6 @@
 # Imports
 import datetime, re, requests, json, time, urllib, threading, logging, random, copy, os, pdb, uuid
+ 
 
 class BadConfig(Exception):
     pass
@@ -45,7 +46,7 @@ def config_for_source_type(config_file, source_type, ndx=0):
 
 
 def exponential_backoff(n):
-    s = max(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
+    s = min(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
     resume_time = (datetime.datetime.now() + datetime.timedelta(seconds=s)).strftime('%I:%M:%S %p')
     logging.error(f"Sleeping for {s} seconds, will resume around {resume_time}.")
     time.sleep(s)
@@ -80,7 +81,7 @@ class CybexSource:
 
         validate_input_config()
 
-        self.post_url = api_config["url"] + "/api/v1.0/event"
+        self.post_url = api_config["url"] + "/api/v1.0/raw"
         self.token = api_config["token"]
 
     def __str__(self):
@@ -96,7 +97,9 @@ class CybexSource:
         if type(events) != list: events = [events]
         api_responses = []
 
-        logging.info(f"Posting {len(events)} events to Cybex API.")
+        if events:
+            logging.info(f"Posting {len(events)} events from {self.name} to Cybex API.")
+
         for event in events: 
             if isinstance(event, dict): event = json.dumps(event)
             data = event.encode()
@@ -107,7 +110,7 @@ class CybexSource:
                 n_failed_requests = 0
                 try:
                     with requests.post(self.post_url, files=files, headers=headers, data = {
-                    'orgid': self.orgid, 'typtag': self.typtag, 'timezone': self.timezone}) as r:
+                        'orgid': self.orgid, 'typtag': self.typtag, 'timezone': self.timezone, "name": self.name}) as r:
                         api_responses.append((r.status_code, r.content))
 
                         r.close()

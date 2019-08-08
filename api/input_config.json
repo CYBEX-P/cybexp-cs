@@ -2,13 +2,15 @@
   "input": [
     {
       "type": "websocket",
+      "name": "UNR Honeypot",
       "orgid": "f27df111-ca31-4700-99d4-2635b6c37851",
       "typtag": "unr-honeypot",
       "timezone": "US/Pacific",
       "url": "ws://134.197.113.12:32323/"
     },
     {
-      "type": "misp-api",
+      "type": "misp_api",
+      "name": "UNR MISP",
       "orgid": "a0564f70-1f49-4cd3-97bf-66249df9f59b",
       "typtag": "misp-api",
       "timezone": "UTC",
@@ -20,6 +22,7 @@
     },
     {
       "type": "misp_file",
+      "name": "MISP Offline",
       "orgid": "a0564f70-1f49-4cd3-97bf-66249df9f59b",
       "typtag": "misp-api",
       "timezone": "US/Pacific",
@@ -27,6 +30,7 @@
     },
     {
       "type": "phishtank",
+      "name": "phishtank.com",
       "typtag": "phishtank-api",
       "phishtank_api_key": "ec693941646a6236b9c79474b8e17e52dd6ce9d242049bc242f12ecbfe85a86e",
       "timezone": "UTC",

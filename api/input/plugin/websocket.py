@@ -6,7 +6,7 @@ else: from .common import *
 from lomond import WebSocket
 from lomond.persist import persist
 
-class HoneypotSource(CybexSource):
+class WebsocketSource(CybexSource):
     def __init__(self, api_config, input_config):
         super().__init__(api_config, input_config)
         self.ws = WebSocket(self.url)
@@ -24,15 +24,15 @@ class HoneypotSource(CybexSource):
                 logging.info(event.name + ' ' + str(self))
 
 
-def honeypot_fetch():
+def websocket_fetch():
     config_file = get_config_file()
     api_config = config_file["api_srv"]
-    honeypot_config = config_for_source_type(config_file, "websocket")
+    websocket_config = config_for_source_type(config_file, "websocket")
 
-    honeypot_source = HoneypotSource(api_config, honeypot_config)
+    websocket_source = WebsocketSource(api_config, websocket_config)
 
-    CybexSourceFetcher(honeypot_source).run()
+    CybexSourceFetcher(websocket_source).run()
 
 
 if __name__ == "__main__":
-    honeypot_fetch()
+    websocket_fetch()

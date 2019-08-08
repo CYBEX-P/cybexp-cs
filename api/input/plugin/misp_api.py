@@ -25,7 +25,7 @@ class MISPServerSource(CybexSource):
 def misp_server_fetch():
     config_file = get_config_file()
     api_config = config_file["api_srv"]
-    misp_server_config = config_for_source_type(config_file, "misp-api")
+    misp_server_config = config_for_source_type(config_file, "misp_api")
 
     if not isinstance(misp_server_config["orgs"], list):
         misp_server_config["orgs"] = [ misp_server_config["orgs"] ]

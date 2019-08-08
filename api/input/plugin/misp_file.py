@@ -13,7 +13,7 @@ class MISPFileSource(CybexSource):
         return('MISP File input, orgid = {}, typtag = {}, timezone = {}, url = {}'.format(
                 self.orgid, self.typtag, self.timezone, self.url))
 
-    def run(self):
+    def fetch(self):
         f = open(self.filename, "r")
         j = json.load(f)
         for event in j['response']:
