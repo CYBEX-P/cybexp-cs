@@ -11,7 +11,7 @@ class Count(Resource):
     def __init__(self):
         req = parser.parse_args()
         req = {k:v for k,v in req.items() if v is not None}
-        self.att_type, self.value = list(req.items())[0]
+        self.att_type, self.data = list(req.items())[0]
 
     @jwt_required
     def post(self):
@@ -19,9 +19,9 @@ class Count(Resource):
         return (r, 200)
 
     def get_count(self):
-            att = Attribute(self.att_type, self.value)
+            att = Attribute(self.att_type, self.data)
             c = att.count()
-            return {"count" : c, att.att_type : att.value}
+            return {"count" : c, att.sub_type : att.data}
 
 
         

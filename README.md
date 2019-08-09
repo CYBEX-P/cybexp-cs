@@ -6,8 +6,10 @@ CYBEX-P CS
 
 ```
 # 0. Check and kill if any python scripts are running:
+pgrep python
 ps -ef | grep python
 kill -9 xxxx
+pkill python
 
 # 1. Activate Virtual Environment
 source ~/venv/bin/activate
@@ -28,8 +30,13 @@ nohup python archive.py &
 cd ~/cybexp/proc/analytics
 nohup python analytics.py &
 
+# 6. Run Metric Script
+cd ~/cybexp
+nohup python metric.py &
+
 # Show all running
 ps -ef | grep python
+pgrep python
 ```
 
 #### API Debug

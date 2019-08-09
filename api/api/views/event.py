@@ -1,49 +1,29 @@
-if __name__ == "__main__":
-    from views_comm import *
-    from crypto import encrypt_file
-else:
-    from .views_comm import * # .views=views.py, views=this folder
-    from .crypto import encrypt_file
+if __name__ == "__main__": from views_comm import *
+else: from .views_comm import * 
 
-from io import BytesIO
-from datetime import datetime
-import werkzeug
+from tahoe.report import Report
+from tahoe import parse
+from flask_restful import Resource, reqparse
+import pdb
 
-# Load Cache Database
-from pymongo import MongoClient
-import gridfs
-URI = 'mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin'
-client = MongoClient(URI)
+parser = reqparse.RequestParser()
+parser.add_argument('page', type=int)
+parser.add_argument('limit', type=int)
 
-ccoll = client.cache_db.file_entries
-cfs = gridfs.GridFS(client.cache_db)
+class EventFeatures(Resource):
+    @jwt_required
+    def get(self, *args, **kwargs):
+        req = parser.parse_args()
+        req = {k:v for k,v in req.items() if v is not None}
 
-# Post Events to API
-ep = reqparse.RequestParser()
-ep.add_argument('orgid', required=True)
-ep.add_argument('file', location='files', required=True, type=werkzeug.datastructures.FileStorage)
-ep.add_argument('typtag', required=True)
-ep.add_argument('timezone', required=True)
-
-class Event(Resource):
-    decorators=[]
-    @jwt_required  
-    def post(self):
-        request = ep.parse_args()
-        f = request['file']
-        fenc = encrypt_file(f.read())
-        fenc = BytesIO(fenc)
+        page_no = req.pop('page',0)
+        limit = min(req.pop('limit',100),1000)
         
-        info = {}
-        info['datetime'] = datetime.now(pytz.utc).isoformat()
-        info['orgid'] = request['orgid']
-        info['processed'] = False
-        info['typtag'] = request['typtag']
-        info['timezone'] = request['timezone']        
-        try:
-            info['fid'] = cfs.put(fenc, filename=f.filename)
-            i = ccoll.insert_one(info)
-        except pymongo.errors.ServerSelectionTimeoutError:
-            return ({'message': 'Database down'}, 500)
+        rp = Report()
+        result = rp.event_features(limit, max(page_no-1,0))
 
-        return ({'message': 'File Uploaded Succesfully'}, 201)
+        return (result, 200)
+        
+        
+
+

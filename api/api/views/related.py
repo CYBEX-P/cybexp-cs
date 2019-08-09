@@ -13,7 +13,7 @@ class Related(Resource):
         req = rparser.parse_args()
         req = {k:v for k,v in req.items() if v is not None}
         self.lvl = req.pop('level', 1)
-        self.att_type, self.value = list(req.items())[0]
+        self.att_type, self.data = list(req.items())[0]
 
     @jwt_required
     def post(self):
@@ -21,7 +21,7 @@ class Related(Resource):
         return (r, 200)
 
     def get_related(self, itype=None):
-            att = Attribute(self.att_type, self.value)
+            att = Attribute(self.att_type, self.data)
             if itype: r = att.related(self.lvl, itype)
             else: r = att.related(self.lvl)
             e = []
@@ -34,11 +34,11 @@ class RelatedAttribute(Related):
 
 class RelatedAttributeSummary(RelatedAttribute):
     def get_related(self):
-        att = Attribute(self.att_type, self.value)
-        r = att.related(self.lvl, "attribute", {"att_type":1,"value":1})
+        att = Attribute(self.att_type, self.data)
+        r = att.related(self.lvl, "attribute", {"sub_type":1,"data":1})
         e = {}
         for i in r:
-            t, v = i["att_type"], i["value"]
+            t, v = i["sub_type"], i["data"]
             if t not in e: e[t] = [v]
             else: e[t].append(v)
         return e

@@ -1,7 +1,7 @@
 # proc\analytics\analytics.py
+
 from queue import Queue
 import time, logging, copy, random, os, pdb
-
 
 def exponential_backoff(n):
     s = min(3600, (2 ** n) + (random.randint(0, 1000) / 1000))
@@ -52,7 +52,7 @@ if __name__ == "__main__":
             }
 
 
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
+    logging.basicConfig(filename = '../proc.log', level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') # filename = '../proc.log',
  
     analytics(copy.deepcopy(analytics_config))
 

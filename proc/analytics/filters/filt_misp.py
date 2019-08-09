@@ -1,18 +1,6 @@
+import os, logging, json, copy, time, pdb
 
-import os, logging, json, copy, sys, time, pdb
-from pprint import pprint
-
-if __name__ == "__main__":
-    config = { 
-		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
-##                "mongo_url" : "mongodb://localhost:27017",
-		"analytics_db" : "tahoe_db",
-##                "analytics_db" : "tahoe_demo",
-		"analytics_coll" : "instances"
-            }
-    os.environ["_MONGO_URL"] = config.pop("mongo_url")
-    os.environ["_ANALYTICS_DB"] = config.pop("analytics_db", "tahoe_db")
-    os.environ["_ANALYTICS_COLL"] = config.pop("analytics_coll", "instances")
+if __name__ == "__main__": from demo_env import *
 
 from tahoe import get_backend, NoBackend, Attribute, Object, Event, Session, parse
 
@@ -150,27 +138,32 @@ _ALIAS = {
     "x509-fingerprint-sha256" : ["x509_fingerprint", "x509_fingerprint_sha256"]
 }
 
-def filt_misp():
+def filt_misp(backend=NoBackend()):
     try: 
         filt_id = "filter--f2d1b00a-24fc-4faa-95aa-2932b3b400e5"
-        query = {"raw_type":"x-misp-event", "filters":{"$ne":filt_id}, "_valid":{"$ne":False}}
-        backend = get_backend() if os.getenv("_MONGO_URL") else NoBackend()
+        if os.getenv("_MONGO_URL"): backend = get_backend()
+
+        query = {"itype":"raw", "sub_type":"x-misp-event",
+                 "filters":{"$ne":filt_id}, "_valid":{"$ne":False}}
         cursor = backend.find(query, _PROJECTION, no_cursor_timeout=True)
-        if not cursor: return False
+
+        any_success = False
         for raw in cursor:           
-            try: j = Misp(raw, backend)
+            try: j = Misp(copy.deepcopy(raw), backend)
             except:
                 logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
                     "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
 ##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-            else: backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
-
-
+                j = False
+            else:
+                backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
+            any_success = any_success or bool(j)
+            
     except (KeyboardInterrupt, SystemExit): raise
     except:
         logging.error("proc.analytics.filters.filt_misp.filt_misp.2: ", exc_info=True)
         return False
-    return True
+    return any_success
 
 
 class MispAttribute(Attribute):
@@ -180,9 +173,10 @@ class MispAttribute(Attribute):
 
 class Misp():       
     def __init__(self, raw, backend):
+        event_type = 'misp'
         e = raw["data"]["Event"]
         attribute, related = e["Attribute"], e["RelatedEvent"]
-        event_type, orgid, timestamp = 'misp', raw["orgid"], float(e["timestamp"])
+        orgid, timestamp = raw["orgid"], float(e["timestamp"])
 
         org, orgc = self.parse_org(e['Org']), self.parse_org(e['Orgc'])
         org, orgc = Object('x-misp-org', [org]), Object('x-misp-orgc', [orgc])
