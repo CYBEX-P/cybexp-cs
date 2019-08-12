@@ -6,13 +6,14 @@ def exponential_backoff(n):
     time.sleep(s)
 
 # Classes
-class CybInp():
+class CybInp:
+    timezone = "UTC"
+
     def __init__(self, url, token, **kwargs):
         self.post_url = url + '/api/v1.0/raw'
+        for config_element, config_value in kwargs.items():
+            setattr(self, config_element, config_value)
         self.token = token
-        self.orgid = kwargs.pop('orgid')
-        self.typtag = kwargs.pop('typtag')
-        self.timezone = kwargs.pop('timezone', 'UTC')
 
     def __str__(self):
         return('Cybexp Input, api server = {}, post url = {}'.format(

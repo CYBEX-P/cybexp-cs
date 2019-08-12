@@ -1,18 +1,19 @@
-if __name__ == "__main__": from plugin_comm import *
-else: from .plugin_comm import *
+#!/usr/bin/env python3
 
-import os
+if __name__ == "__main__": from common import *
+else: from .common import *
 
-class MispFileInp(CybInp):
-    def __init__(self, api_url, api_token, filename, **kwargs):
+
+class MISPFileSource(CybexSource):
+    def __init__(self, api_config, input_config, filename):
         self.filename = filename
-        super().__init__(api_url, api_token, **kwargs)
+        super().__init__(api_config, input_config)
         
     def __str__(self):
         return('MISP File input, orgid = {}, typtag = {}, timezone = {}, url = {}'.format(
                 self.orgid, self.typtag, self.timezone, self.url))
 
-    def run(self):
+    def fetch(self):
         f = open(self.filename, "r")
         j = json.load(f)
         for event in j['response']:
@@ -22,35 +23,23 @@ class MispFileInp(CybInp):
         os.rename(self.filename, self.filename+'.bak')
 
 
-def misp_file_proc(config):
-    n = 0
-##    while True:
-    try:
-        file_lst = []
-        api_url = config['api_srv']['url']
-        api_token = config['api_srv']['token']
-        for inp in config['input']:
-            if inp['type'] == 'misp_file':
-                loc = inp.pop('directory',None)
-                for filename in os.listdir(loc):
-                    if filename[-4:] == 'json':
-                        misp_filei = MispFileInp(api_url, api_token, os.path.join(loc,filename),**inp)
-                        file_lst.append(misp_filei)
-                
+def misp_file_fetch():
+    config_file = get_config_file()
+    api_config = config_file["api_srv"]
+    misp_file_config = config_for_source_type(config_file, "misp_file")
+    
+    misp_file_dir = misp_file_config['directory']
+    
+    misp_files = [
+        os.path.join(misp_file_dir, misp_file)
+        for misp_file in os.listdir(misp_file_dir)
+        if misp_file.endswith("json")
+    ]
 
-        for misp_filei in file_lst:
-            misp_filei.run()
-            logging.info("cybexp.api.input.file.file_proc: This loop does not need threads")
-            
-        n = 0
+    for misp_file in misp_files:
+        misp_file_source = MISPFileSource(api_config, misp_server_config, misp_file)
+        CybexSourceFetcher(misp_file_source).run()
         
-    except Exception:
-        logging.error("plugin.file.file_proc -- ", exc_info=True)
-        exponential_backoff(n)
-        n += 1
 
 if __name__ == "__main__":
-    with open("../../input_config.json") as f: input_config = json.load(f)
-    if not input_config: logging.error("plugin.ws: No input configuration found")
-
-    misp_file_proc(input_config)
+    misp_file_fetch()
