@@ -15,23 +15,23 @@ pkill python
 source ~/venv/bin/activate
 
 # 2. Run Flask API:
-cd ~/cybexp/api/api
+cd ~/cybexp-cs/api
 nohup python run.py &
 
 # 3. Run Input Stream:
-cd ~/cybexp/api/input
+cd ~/cybexp-cs/input
 nohup python input.py &
 
 # 4. Run Archive Script
-cd ~/cybexp/proc/archive
+cd ~/cybexp-cs/proc/archive
 nohup python archive.py &
 
 # 5. Run Processing Script
-cd ~/cybexp/proc/analytics
+cd ~/cybexp-cs/proc/analytics
 nohup python analytics.py &
 
 # 6. Run Metric Script
-cd ~/cybexp
+cd ~/cybexp-cs
 nohup python metric.py &
 
 # Show all running
