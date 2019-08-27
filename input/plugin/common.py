@@ -119,19 +119,19 @@ class CybexSourceFetcher(threading.Thread):
             self.seconds_between_fetches = cybex_source.seconds_between_fetches
 
         logging.info(
-            f"plugin.{self.source_name}-- Applying rate limiting of {self.seconds between fetches} seconds between fetches"
+            f"plugin.{self.source_name}-- Applying rate limiting of {self.seconds_between_fetches} seconds between fetches"
         )
 
     def rate_limit(self, n_failed_queries):
         """ Can use more complicated limiting logic; sleep for now. """
         if n_failed_queries > 0:
             logging.warning(
-                "plugin.{self.source_name}-- backing off exponentially due to failures."
+                f"plugin.{self.source_name}-- backing off exponentially due to failures."
             )
             exponential_backoff(n_failed_queries)
         else:
             logging.info(
-                "plugin.{self.source_name}-- waiting for {self.seconds_between_fetches}."
+                f"plugin.{self.source_name}-- waiting for {self.seconds_between_fetches}."
             )
             time.sleep(self.seconds_between_fetches)
 
