@@ -93,7 +93,9 @@ class CybexSource:
                             n_failed_requests = 0
                             break
                         else:
-                            logging.error(f"Failed to post {self.name} to Cybex API:\n{r.text}")
+                            logging.error(
+                                f"Failed to post {self.name} to Cybex API:\n{r.text}"
+                            )
                             n_failed_requests += 1
 
                 except requests.exceptions.ConnectionError as e:
@@ -115,6 +117,10 @@ class CybexSourceFetcher(threading.Thread):
 
         if hasattr(cybex_source, "seconds_between_fetches"):
             self.seconds_between_fetches = cybex_source.seconds_between_fetches
+
+        logging.info(
+            f"plugin.{self.source_name}-- Applying rate limiting of {self.seconds between fetches} seconds between fetches"
+        )
 
     def rate_limit(self, n_failed_queries):
         """ Can use more complicated limiting logic; sleep for now. """

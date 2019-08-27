@@ -125,7 +125,8 @@ if __name__ == "__main__":
         level=logging.DEBUG,
         format="%(asctime)s %(levelname)s:%(message)s",
     )
-
+    
+    logging.info("Starting CTI collector...")
     logging.info(f"Running the following plugins: {args.plugins}")
 
     run_input_plugins(args.plugins)
