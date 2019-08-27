@@ -26,4 +26,9 @@ class UnrHoneypot():
 class CuckooReport():
     pass
 
+@CustomObservable('x-phishtank', [])
+class PhishtankReport:
+    pass
+
+
 

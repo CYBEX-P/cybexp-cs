@@ -18,7 +18,9 @@
       "orgs": [
         1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28],
       "misp_key": "eqyU15K4MByA9t89lkXlbrG559gYC5LkVnQcSXrS",
-      "misp_verifycert": true
+      "misp_verifycert": true,
+      "seconds_between_fetches": 43200
+
     },
     {
       "type": "misp_file",
@@ -34,7 +36,8 @@
       "typtag": "phishtank-api",
       "phishtank_api_key": "ec693941646a6236b9c79474b8e17e52dd6ce9d242049bc242f12ecbfe85a86e",
       "timezone": "UTC",
-      "orgid": "80093a09-afb6-47c1-8566-344c9e605c8b"
+      "orgid": "80093a09-afb6-47c1-8566-344c9e605c8b",
+      "seconds_between_fetches": 43200
     }
   ],
   "api_srv": {
