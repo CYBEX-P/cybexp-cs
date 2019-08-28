@@ -8,7 +8,7 @@ def parsemain(typtag, orgid, timezone, data):
         raw_sub_type = {
             "misp-api": "x-misp-event",
             "unr-honeypot": "x-unr-honeypot",
-            "phishtank": "x-phishtank",
+            "phishtank-api": "x-phishtank",
         }.get(typtag, None)
         if raw_sub_type:
             raw = Raw(raw_sub_type, data, orgid, timezone)

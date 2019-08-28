@@ -20,9 +20,9 @@ class WebsocketSource(CybexSource):
             if event.name == "text":
                 rr = self.post_event_to_cybex_api(event.json)
                 [
-                    logging.exception(str(r.status_code) + " " + r.reason)
+                    logging.exception(str(r[0]) + " " + r[1])
                     for r in rr
-                    if not r.ok
+                    if not r[0] == 200
                 ]
             else:
                 logging.info(event.name + " " + str(self))

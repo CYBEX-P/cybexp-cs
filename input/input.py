@@ -2,6 +2,7 @@
 import argparse
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Collection
 
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     logging.basicConfig(
         filename=logfile,
         level=logging.DEBUG,
-        format="%(asctime)s %(levelname)s:%(message)s",
+        format=f"[{os.getpid()}] %(asctime)s %(levelname)s:%(message)s",
     )
     
     logging.info("Starting CTI collector...")
