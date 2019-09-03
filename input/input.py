@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 import argparse
 import json
 import logging
@@ -114,15 +114,7 @@ if __name__ == "__main__":
         if p not in plugin_for_type:
             raise NoSuchPlugin(f"{p} isn't a valid plugin.")
 
-    # Set this up after argparse since it may be helpful to get those errors
-    # back to stdout
-    logfile = Path("/var/log/cybexp/input.log")
-    print(f"Setting up logging to {logfile}")
-    logfile.parent.mkdir(parents=True, exist_ok=True, mode=0o777)
-    logfile.touch(exist_ok=True, mode=0o666)
-
     logging.basicConfig(
-        filename=logfile,
         level=logging.DEBUG,
         format=f"[{os.getpid()}] %(asctime)s %(levelname)s:%(message)s",
     )
