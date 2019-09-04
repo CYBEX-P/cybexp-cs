@@ -1,1 +1,1 @@
-sudo docker run cybex-input:latest
+sudo docker run --log-opt max-size=2g -d cybex-input:latest
