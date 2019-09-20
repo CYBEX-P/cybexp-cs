@@ -1,6 +1,7 @@
 import pymongo, pytz, stix2, json, os
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
+from dateutil.parser import parse as parse_time
 
 os.environ["_MONGO_URL"] = "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin"
 os.environ["_TAHOE_DB"] = "tahoe_db"
@@ -135,4 +136,45 @@ builtins._VALID_ATT = [
     "yara"
 ]
 
-        
+common_parser = reqparse.RequestParser()
+common_parser.add_argument('from')
+common_parser.add_argument('to')
+common_parser.add_argument('timezone')
+
+class Report(Resource):
+    def __init__(self):
+        self.tzname = None
+        self.start = 0
+        self.end = None
+
+    def get_dtrange(self):
+        req = common_parser.parse_args()
+
+        utc = pytz.utc
+        tzname = req['timezone']
+        start = req['from']
+        end = req['to']
+
+        if not tzname: tzname = 'UTC'
+        try: tz = pytz.timezone(tzname)
+        except pytz.UnknownTimeZoneError:
+            self.error, self.code = 'Unknown Timezone : ' + tzname, 422 
+            return False
+
+        if start:
+            try: start = parse_time(start)
+            except ValueError:
+                self.error, self.code = 'Invalid from-time : ' + start, 422 
+                return False
+            self.start = tz.localize(start).astimezone(utc).timestamp()
+
+        if end:
+            try: end = parse_time(end)
+            except ValueError:
+                self.error, self.code = 'Invalid to-time : ' + end, 422 
+                return False
+            self.end = tz.localize(end).astimezone(utc).timestamp()
+
+        return True
+
+            

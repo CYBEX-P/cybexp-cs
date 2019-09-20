@@ -7,11 +7,12 @@ import pdb
 parser = reqparse.RequestParser()
 for att_type in _VALID_ATT: parser.add_argument(att_type)
 
-class Count(Resource):
+class Count(Report):
     def __init__(self):
         req = parser.parse_args()
         req = {k:v for k,v in req.items() if v is not None}
         self.att_type, self.data = list(req.items())[0]
+        super().__init__()
 
     @jwt_required
     def post(self):
@@ -19,9 +20,10 @@ class Count(Resource):
         return (r, 200)
 
     def get_count(self):
-            att = Attribute(self.att_type, self.data)
-            c = att.count()
-            return {"count" : c, att.sub_type : att.data}
+        self.get_dtrange()
+        att = Attribute(self.att_type, self.data)
+        c = att.count(self.start, self.end)
+        return {"count" : c, att.sub_type : att.data}
 
 
         
