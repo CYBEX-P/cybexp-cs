@@ -1,79 +1,178 @@
 import os, logging, json, copy, time, pdb
 
-if __name__ == "__main__": from demo_env import *
+from typing import Any, Dict, List, Tuple
 
-from tahoe import get_backend, NoBackend, Attribute, Object, Event, Session, parse
+if __name__ == "__main__":
+    from demo_env import *
 
-
-_PROJECTION = {"_id":0, "filters":0, "_valid":0}
-
-
-{
-    "_id" : ObjectId("5d659d48148205ab44b48161"),
-    "itype" : "raw",
-    "data" : {
-        "phish_id" : "6176706",
-        "url" : "https://enqiu.ga/doo/enterpassword.php?4Hb73J15669355823f476395fe789b6e359947a34ef3236a3f476395fe789b6e359947a34ef3236a3f476395fe789b6e359947a34ef3236a3f476395fe789b6e359947a34ef3236a3f476395fe789b6e359947a34ef3236a&AP___=email@test.com&error=",
-        "phish_detail_url" : "http://www.phishtank.com/phish_detail.php?phish_id=6176706",
-        "submission_time" : "2019-08-27T19:53:02+00:00",
-        "verified" : "yes",
-        "verification_time" : "2019-08-27T19:54:35+00:00",
-        "online" : "yes",
-        "details" : [ 
-            {
-                "ip_address" : "104.18.39.113",
-                "cidr_block" : "104.18.32.0/20",
-                "announcing_network" : "13335",
-                "rir" : "arin",
-                "country" : "US",
-                "detail_time" : "2019-08-27T19:54:20+00:00"
-            }
-        ],
-        "target" : "Microsoft"
-    },
-    "orgid" : "identity--80093a09-afb6-47c1-8566-344c9e605c8b",
-    "timezone" : "UTC",
-    "sub_type" : "x-phishtank",
-    "_hash" : "e984a869068d7ab84307f836c9be19b2ab999ac7ebffb32b0857ac61f8f27b62",
-    "uuid" : "raw--d08c77da-9a36-4d03-9955-9a5b2a65fda5"
-}
-
-def filt_misp(backend=NoBackend()):
-    try: 
-        filt_id = "filter--8de6c198-25dd-4c1f-9eb9-6b6d5c3e54a6"
-        if os.getenv("_MONGO_URL"): backend = get_backend()
-
-        query = {"itype":"raw", "sub_type":"x-misp-event",
-                 "filters":{"$ne":filt_id}, "_valid":{"$ne":False}}
-        cursor = backend.find(query, _PROJECTION, no_cursor_timeout=True)
-
-        any_success = False
-        for raw in cursor:           
-            try: j = Misp(copy.deepcopy(raw), backend)
-            except:
-                logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
-                    "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
-##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-                j = False
-            else:
-                backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
-            any_success = any_success or bool(j)
-            
-    except (KeyboardInterrupt, SystemExit): raise
-    except:
-        logging.error("proc.analytics.filters.filt_misp.filt_misp.2: ", exc_info=True)
-        return False
-    return any_success
+from tahoe import (
+    get_backend,
+    Attribute as TahoeAttribute,
+    Object as TahoeObject,
+    Event as TahoeEvent,
+    Session,
+    parse,
+)
 
 
-class Misp():       
-    def __init__(self, raw, backend):
-        event_type = 'sighting'
-        data = url_att
-        orgid = get from data
-        timestamp = (convert it to float)
-        malicious = True
-    
+def coerce_types_to_tahoe(record):
+    if "timestamp" in record:
+        from datetime import datetime as dt
 
-if __name__ == "__main__": filt_misp()
- 
+        ts = record["timestamp"]
+
+        ts = ts[: -len("+00:00")]  # Strip UTC offset
+
+        dt = dt.strptime(ts, "%Y-%m-%dT%H:%M:%S")
+
+        record["timestamp"] = dt.timestamp()  # Convert to float
+
+
+def translate_record_to_tahoe(record, translator: Dict[str, str]):
+    """ Translate a JSON `record` to a Tahoe object based on a translator. 
+
+    Translators have the following structure:
+
+    {
+        "Tahoe object name": "JSON document path of object value"
+    }
+
+    For example, if I wanted to set the value of "count" to record["a"]["b"]["c"]:
+
+    {
+    "a" : { "b" : { "c" : 5 } }
+    }
+
+    I would use:
+
+    {"count": ".a.b.c"}
+
+    """
+
+    tahoe_record = {}
+
+    for tahoe_param, record_path in translator.items():
+        path = translator[tahoe_param].split(".")
+
+        if len(path) == 1:
+            # The param is expressed in the translator literally
+            # (i.e. no '.' chars forming a path expression)
+            tahoe_record[tahoe_param] = path[0]
+            continue
+
+        record_obj = record
+        for field in path[1:]:
+            record_obj = record_obj[field]
+
+        tahoe_record[tahoe_param] = record_obj
+
+    return tahoe_record
+
+
+def extract_attrs_from_phishtank_record(record) -> Tuple[List[TahoeAttribute], List[TahoeObject]]:
+    tahoe_attr_realname = {
+        "target": "name",
+        "verification_time": "verification_timestamp",
+        "ip_address": "ipv4",
+        "cidr_block": "cidr",
+        "announcing_network": "asn",
+        "country": "country_code2"
+    }
+
+    tahoe_object_realname = {
+        "ip_address" : ["geoip"],
+        "cidr_block" : ["geoip"],
+        "announcing_network" : ["geoip"],
+        "rir" : ["geoip"],
+        "country" : ["geoip"],
+        "target" : ["organization", "target"]
+    }
+
+    attrs_to_extract = record["data"]
+
+    extracted_attrs = []
+    extracted_objs = []
+
+    for aname, attr in attrs_to_extract.items():
+        if aname in tahoe_attr_realname:
+            # May need to rename some Phishtank attrs
+            # We may also need to create sub-objects from a given Phish attr
+            if aname in tahoe_attr_realname:
+                aname = tahoe_attr_realname[aname]
+            ta = TahoeAttribute(aname, attr)
+            extracted_attrs.append(ta)
+
+            if aname in tahoe_object_aliases:
+                i = 0
+                object_aliases = tahoe_object_aliases[aname]:
+                for i in range(len(object_aliases)):
+                    extracted_objs.append(TahoeObject(object_aliases[i], ta if i == 0 else object_aliases[i - 1]))
+
+
+
+        elif aname == "details":  # Unroll some Phishtank record field
+            attrs_to_extract.update(attr[0])
+
+
+    return extracted_attrs, extracted_objs
+
+
+def convert_to_tahoe_and_archive(phishtank_record):
+    translator = {
+        "event_type": "sighting",
+        "data": ".data.details",
+        "orgid": ".orgid",
+        "timestamp": ".data.submission_time",
+        "malicious": "True",
+    }
+
+    # TODO: handle translator keys that require coercion to a datatype,
+    # e.g. malicious: bool and timestamp: float
+
+    tahoe_record = translate_record_to_tahoe(phishtank_record, translator)
+
+    coerce_types_to_tahoe(tahoe_record)
+
+    attrs, objs = extract_attrs_from_phishtank_record(phishtank_record)
+
+    data = [*attrs, *objs]
+
+    print(Event(translator["event"], data, translator["orgid"], translator["timestamp"]))
+
+
+def archive_all_threat_data(
+    sub_type="x-phishtank", filt_id="841ca96e-c27e-46d8-890c-07e2231030bd"
+):
+    # TODO: Can we use a bool for filter_id?
+    # TODO: Can we replace the archive database with an MQ?
+    if os.getenv("_MONGO_URL"):
+        backend = get_backend()
+
+    query = {
+        "itype": "raw",
+        "sub_type": sub_type,
+        "filters": {"$ne": filt_id},
+        "_valid": {"$ne": False},
+    }
+    projection = {"_id": 0, "filters": 0, "_valid": 0}
+
+    cursor = backend.find(query, projection, no_cursor_timeout=True)
+
+    for record in cursor:
+        try:
+            convert_to_tahoe_and_archive(record)
+        except:
+            logging.error(
+                "proc.analytics.filters.filt_phishtank: "
+                "Phishtank Event id " + record["data"]["phish_id"],
+                exc_info=True,
+            )
+        else:
+            # Mark the record as having been inserted into Archive DB
+            backend.update_one(
+                {"uuid": record["uuid"]}, {"$addToSet": {"filters": filt_id}}
+            )
+
+
+if __name__ == "__main__":
+    archive_all_threat_data()
