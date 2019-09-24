@@ -48,6 +48,8 @@ def translate_record_to_tahoe(record, translator: Dict[str, str]):
     {"count": ".a.b.c"}
 
     """
+    logging.info("Remapping Phishtank record to Tahoe structure")
+    logging.info(f"Translator = {translator}")
 
     tahoe_record = {}
 
@@ -69,23 +71,26 @@ def translate_record_to_tahoe(record, translator: Dict[str, str]):
     return tahoe_record
 
 
-def extract_attrs_from_phishtank_record(record) -> Tuple[List[TahoeAttribute], List[TahoeObject]]:
+def extract_attrs_from_phishtank_record(
+    record
+) -> Tuple[List[TahoeAttribute], List[TahoeObject]]:
+    logging.info("Extracting TahoeAttributes from the Phishtank record.")
     tahoe_attr_realname = {
         "target": "name",
         "verification_time": "verification_timestamp",
         "ip_address": "ipv4",
         "cidr_block": "cidr",
         "announcing_network": "asn",
-        "country": "country_code2"
+        "country": "country_code2",
     }
 
     tahoe_object_realname = {
-        "ip_address" : ["geoip"],
-        "cidr_block" : ["geoip"],
-        "announcing_network" : ["geoip"],
-        "rir" : ["geoip"],
-        "country" : ["geoip"],
-        "target" : ["organization", "target"]
+        "ip_address": ["geoip"],
+        "cidr_block": ["geoip"],
+        "announcing_network": ["geoip"],
+        "rir": ["geoip"],
+        "country": ["geoip"],
+        "target": ["organization", "target"],
     }
 
     attrs_to_extract = record["data"]
@@ -104,15 +109,16 @@ def extract_attrs_from_phishtank_record(record) -> Tuple[List[TahoeAttribute], L
 
             if aname in tahoe_object_aliases:
                 i = 0
-                object_aliases = tahoe_object_aliases[aname]:
+                object_aliases = tahoe_object_aliases[aname]
                 for i in range(len(object_aliases)):
-                    extracted_objs.append(TahoeObject(object_aliases[i], ta if i == 0 else object_aliases[i - 1]))
-
-
+                    extracted_objs.append(
+                        TahoeObject(
+                            object_aliases[i], ta if i == 0 else object_aliases[i - 1]
+                        )
+                    )
 
         elif aname == "details":  # Unroll some Phishtank record field
             attrs_to_extract.update(attr[0])
-
 
     return extracted_attrs, extracted_objs
 
@@ -136,8 +142,15 @@ def convert_to_tahoe_and_archive(phishtank_record):
     attrs, objs = extract_attrs_from_phishtank_record(phishtank_record)
 
     data = [*attrs, *objs]
+    logging.info(f"Data = {data}")
 
-    print(Event(translator["event"], data, translator["orgid"], translator["timestamp"]))
+    from ipdb import set_trace
+
+    set_trace()
+
+    print(
+        Event(translator["event"], data, translator["orgid"], translator["timestamp"])
+    )
 
 
 def archive_all_threat_data(
@@ -172,7 +185,6 @@ def archive_all_threat_data(
             backend.update_one(
                 {"uuid": record["uuid"]}, {"$addToSet": {"filters": filt_id}}
             )
-
 
 if __name__ == "__main__":
     archive_all_threat_data()
