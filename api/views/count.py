@@ -16,14 +16,15 @@ class Count(Report):
 
     @jwt_required
     def post(self):
-        r = self.get_count()
-        return (r, 200)
-
-    def get_count(self):
-        self.get_dtrange()
+        r = self.get_dtrange()
+        if not r: return {"message" : self.error}, self.code
+        
         att = Attribute(self.att_type, self.data)
         c = att.count(self.start, self.end)
-        return {"count" : c, att.sub_type : att.data}
+        return {"count" : c, att.sub_type : att.data}, 200
+
+
+        
 
 
         
