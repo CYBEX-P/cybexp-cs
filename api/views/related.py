@@ -35,13 +35,35 @@ class RelatedAttribute(Related):
 class RelatedAttributeSummary(RelatedAttribute):
     def get_related(self):
         att = Attribute(self.att_type, self.data)
-        r = att.related(self.lvl, "attribute", {"sub_type":1,"data":1})
+
+        r = att.related(self.lvl, "attribute", {"uuid":1, "sub_type":1,"data":1})
+
         e = {}
         for i in r:
             t, v = i["sub_type"], i["data"]
             if t not in e: e[t] = [v]
             else: e[t].append(v)
         return e
+
+class RelatedEventSummary(Related):
+    def get_related(self):
+        att = Attribute(self.att_type, self.data)
+        r = att.related(self.lvl, "event", {"uuid":1, "itype":1,"sub_type":1,"data":1})
+        e = {}
+
+        res = {}
+        for i in r:
+            e = parse(i)
+            f = e.features()
+            for k, v in f.items():
+                if self.data in v:
+                    if e.sub_type not in res:
+                        res[e.sub_type] = {}
+                    if k not in res[e.sub_type]:
+                        res[e.sub_type][k] = 1
+                    else:
+                        res[e.sub_type][k] += 1
+        return res
+            
         
-        
-    
+

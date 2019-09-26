@@ -52,6 +52,7 @@ api.add_resource(views.Raw, '/api/v1.0/raw')
 api.add_resource(views.Related, '/api/v1.0/related')
 api.add_resource(views.RelatedAttribute, '/api/v1.0/related/attribute')
 api.add_resource(views.RelatedAttributeSummary, '/api/v1.0/related/attribute/summary')
+api.add_resource(views.RelatedEventSummary, '/api/v1.0/related/event/summary')
 
 api.add_resource(views.Count,'/api/v1.0/count')
 
