@@ -7,6 +7,7 @@ if __name__ == "__main__":
 
 from tahoe import (
     get_backend,
+    NoBackend,
     Attribute as TahoeAttribute,
     Object as TahoeObject,
     Event as TahoeEvent,
@@ -98,6 +99,9 @@ def extract_attrs_from_phishtank_record(
     extracted_attrs = []
     extracted_objs = []
 
+    # Unroll nested attributes
+    attrs_to_extract.update(attrs_to_extract["details"][0])
+
     for aname, attr in attrs_to_extract.items():
         if aname in tahoe_attr_realname:
             # May need to rename some Phishtank attrs
@@ -107,18 +111,15 @@ def extract_attrs_from_phishtank_record(
             ta = TahoeAttribute(aname, attr)
             extracted_attrs.append(ta)
 
-            if aname in tahoe_object_aliases:
+            if aname in tahoe_object_realname:
                 i = 0
-                object_aliases = tahoe_object_aliases[aname]
+                object_aliases = tahoe_object_realname[aname]
                 for i in range(len(object_aliases)):
                     extracted_objs.append(
                         TahoeObject(
                             object_aliases[i], ta if i == 0 else object_aliases[i - 1]
                         )
                     )
-
-        elif aname == "details":  # Unroll some Phishtank record field
-            attrs_to_extract.update(attr[0])
 
     return extracted_attrs, extracted_objs
 
@@ -144,12 +145,13 @@ def convert_to_tahoe_and_archive(phishtank_record):
     data = [*attrs, *objs]
     logging.info(f"Data = {data}")
 
-    from ipdb import set_trace
-
-    set_trace()
-
     print(
-        Event(translator["event"], data, translator["orgid"], translator["timestamp"])
+        TahoeEvent(
+            tahoe_record["event_type"],
+            data,
+            tahoe_record["orgid"],
+            tahoe_record["timestamp"],
+        )
     )
 
 
@@ -181,10 +183,11 @@ def archive_all_threat_data(
                 exc_info=True,
             )
         else:
-            # Mark the record as having been inserted into Archive DB
-            backend.update_one(
-                {"uuid": record["uuid"]}, {"$addToSet": {"filters": filt_id}}
-            )
+            print("Mark the record as having been inserted into Archive DB")
+            # backend.update_one(
+            #    {"uuid": record["uuid"]}, {"$addToSet": {"filters": filt_id}}
+            # )
+
 
 if __name__ == "__main__":
     archive_all_threat_data()
