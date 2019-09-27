@@ -99,8 +99,9 @@ def extract_attrs_from_phishtank_record(
     extracted_attrs = []
     extracted_objs = []
 
-    # Unroll nested attributes
-    attrs_to_extract.update(attrs_to_extract["details"][0])
+    # Unroll nested attributes, if they exist
+    if attrs_to_extract["details"]:
+        attrs_to_extract.update(attrs_to_extract["details"][0])
 
     for aname, attr in attrs_to_extract.items():
         if aname in tahoe_attr_realname:
@@ -145,13 +146,11 @@ def convert_to_tahoe_and_archive(phishtank_record):
     data = [*attrs, *objs]
     logging.info(f"Data = {data}")
 
-    print(
-        TahoeEvent(
-            tahoe_record["event_type"],
-            data,
-            tahoe_record["orgid"],
-            tahoe_record["timestamp"],
-        )
+    TahoeEvent(
+        tahoe_record["event_type"],
+        data,
+        tahoe_record["orgid"],
+        tahoe_record["timestamp"],
     )
 
 
@@ -183,10 +182,9 @@ def archive_all_threat_data(
                 exc_info=True,
             )
         else:
-            print("Mark the record as having been inserted into Archive DB")
-            # backend.update_one(
-            #    {"uuid": record["uuid"]}, {"$addToSet": {"filters": filt_id}}
-            # )
+            backend.update_one(
+                {"uuid": record["uuid"]}, {"$addToSet": {"filters": filt_id}}
+            )
 
 
 if __name__ == "__main__":
