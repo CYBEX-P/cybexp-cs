@@ -1,4 +1,4 @@
-import pymongo, pytz, stix2, json, os
+import pymongo, pytz, stix2, json, os, time
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 from dateutil.parser import parse as parse_time
@@ -136,27 +136,58 @@ builtins._VALID_ATT = [
     "yara"
 ]
 
+builtins._TEST_ATT = [
+    "country_name-t",
+    "file-t",
+    "filename-t",
+    "hostname-t",
+    "ipv4-t",
+    "port-t",
+    "protocol-t",
+    "sha256-t",
+    "url-t"
+]   
 common_parser = reqparse.RequestParser()
+common_parser.add_argument('last')
 common_parser.add_argument('from')
 common_parser.add_argument('to')
 common_parser.add_argument('timezone')
 
 class Report(Resource):
     def __init__(self):
-        self.tzname = None
-        self.start = 0
+        self.tzname = 'UTC'
+        self.start = 0.0
         self.end = None
 
     def get_dtrange(self):
         req = common_parser.parse_args()
 
         utc = pytz.utc
-        tzname = req['timezone']
+        self.end = time.time()
+
+        last = req['last']
         start = req['from']
         end = req['to']
+        tzname = req['timezone']
 
-        if not tzname: tzname = 'UTC'
-        try: tz = pytz.timezone(tzname)
+        print(last, start, end)
+        assert(not (last and (start or end)))
+
+        def tosec(s):
+            spu = {"s":1, #"sec":1, "second":1, "seconds":1,
+                   "m":60, #"min":60, "mins":60, "minute":60, "minutes":60,
+                   "h":3600, #"hr":3600, "hrs":3600, "hour":3600, "hours":3600
+                   "d":86400, #"day":86400, "days":86400,
+                   "w":604800, #"week":604800, "weeks":604800,
+                   "M":2629800, #"month":2629800, "months":2629800
+                   "Y":31557600} #"year":31557600, "years":31557600}
+            return int(s[:-1]) * spu[s[-1]]
+                
+        if last:
+            self.start = self.end - tosec(last)
+
+        if tzname: self.tzname = 'UTC'
+        try: self.tz = pytz.timezone(self.tzname)
         except pytz.UnknownTimeZoneError:
             self.error, self.code = 'Unknown Timezone : ' + tzname, 422 
             return False
@@ -166,14 +197,14 @@ class Report(Resource):
             except ValueError:
                 self.error, self.code = 'Invalid from-time : ' + start, 422 
                 return False
-            self.start = tz.localize(start).astimezone(utc).timestamp()
+            self.start = self.tz.localize(start).astimezone(utc).timestamp()
 
         if end:
             try: end = parse_time(end)
             except ValueError:
                 self.error, self.code = 'Invalid to-time : ' + end, 422 
                 return False
-            self.end = tz.localize(end).astimezone(utc).timestamp()
+            self.end = self.tz.localize(end).astimezone(utc).timestamp()
 
         return True
 
