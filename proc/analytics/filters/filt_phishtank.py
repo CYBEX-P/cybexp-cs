@@ -83,6 +83,7 @@ def extract_attrs_from_phishtank_record(
         "cidr_block": "cidr",
         "announcing_network": "asn",
         "country": "country_code2",
+        "url": "url"
     }
 
     tahoe_object_realname = {
@@ -92,6 +93,7 @@ def extract_attrs_from_phishtank_record(
         "rir": ["geoip"],
         "country": ["geoip"],
         "target": ["organization", "target"],
+        "url": ["url"],
     }
 
     attrs_to_extract = record["data"]
@@ -127,7 +129,7 @@ def extract_attrs_from_phishtank_record(
 
 def convert_to_tahoe_and_archive(phishtank_record):
     translator = {
-        "event_type": "sighting",
+        "event_type": "phishtank-url",
         "data": ".data.details",
         "orgid": ".orgid",
         "timestamp": ".data.submission_time",
@@ -155,7 +157,7 @@ def convert_to_tahoe_and_archive(phishtank_record):
 
 
 def archive_all_threat_data(
-    sub_type="x-phishtank", filt_id="841ca96e-c27e-46d8-890c-07e2231030bd"
+    sub_type="x-phishtank", filt_id="1f8169b1-2d02-4806-91ee-5299d02aa414"
 ):
     # TODO: Can we use a bool for filter_id?
     # TODO: Can we replace the archive database with an MQ?
