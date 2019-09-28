@@ -7,7 +7,7 @@ import pdb
 parser = reqparse.RequestParser()
 for att_type in _VALID_ATT: parser.add_argument(att_type)
 
-class Count(Report):
+class Count(CybResource):
     def __init__(self):
         req = parser.parse_args()
         req = {k:v for k,v in req.items() if v is not None}

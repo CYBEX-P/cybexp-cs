@@ -153,25 +153,26 @@ common_parser.add_argument('from')
 common_parser.add_argument('to')
 common_parser.add_argument('timezone')
 
-class Report(Resource):
+class CybResource(Resource):
     def __init__(self):
-        self.tzname = 'UTC'
-        self.start = 0.0
-        self.end = None
+        self.tzname = 'UTC'       
 
     def get_dtrange(self):
         req = common_parser.parse_args()
 
         utc = pytz.utc
+        self.start = 0.0
         self.end = time.time()
+        self.dtreq = False
 
         last = req['last']
         start = req['from']
         end = req['to']
         tzname = req['timezone']
 
-        print(last, start, end)
         assert(not (last and (start or end)))
+
+        if ((last or start or end)): self.dtreq = True
 
         def tosec(s):
             spu = {"s":1, #"sec":1, "second":1, "seconds":1,
