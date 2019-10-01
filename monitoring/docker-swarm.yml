@@ -26,7 +26,7 @@ services:
       # This environment variable controls the built-in support widget and
       # metrics collection in MongoDB Charts. To disable both, set the value
       # to "off". The default is "on".
-      CHARTS_SUPPORT_WIDGET_AND_METRICS: "on"
+      CHARTS_SUPPORT_WIDGET_AND_METRICS: "off"
       CHARTS_MONGODB_URI: "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin"
       # Directory where you can upload SSL certificates (.pem format) which
       # should be considered trusted self-signed or root certificates when
