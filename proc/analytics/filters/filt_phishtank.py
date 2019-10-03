@@ -1,4 +1,4 @@
-import os, logging, json, copy, time, pdb
+import os, logging, json, copy, time
 
 from typing import Any, Dict, List, Tuple
 
@@ -83,7 +83,7 @@ def extract_attrs_from_phishtank_record(
         "cidr_block": "cidr",
         "announcing_network": "asn",
         "country": "country_code2",
-        "url": "url"
+        "url": "url",
     }
 
     tahoe_object_realname = {
