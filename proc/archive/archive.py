@@ -64,7 +64,6 @@ def archive_one(event, cache_coll, fs, pkey_fp, parsemain):
         cache_coll.update_one(
             {"_id" : event["_id"]},
             {
-                "$set" : {"processed" : True},
                 "$set" : {"bad_data" : True}
             }
         )
@@ -101,7 +100,7 @@ def archive(config):
         
     while True:
         try:
-            cursor = cache_coll.find({"processed":False, "typtag":"unr-honeypot"}).limit(10000)
+            cursor = cache_coll.find({"processed":False, "bad_data":{"$ne":True}}).limit(10000)
             any_success = False
             for e in cursor:
                 s = archive_one(e, cache_coll, fs, private_key_file_path, parsemain)
