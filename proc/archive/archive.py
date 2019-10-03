@@ -60,6 +60,15 @@ def archive_one(event, cache_coll, fs, pkey_fp, parsemain):
             return True
         else:
             return False
+    except gridfs.errors.CorruptGridFile:
+        cache_coll.update_one(
+            {"_id" : event["_id"]},
+            {
+                "$set" : {"processed" : True},
+                "$set" : {"bad_data" : True}
+            }
+        )
+        return False
     except:
         logging.error("proc.archive.archive_one: -- ", exc_info=True)
         return False
@@ -92,7 +101,7 @@ def archive(config):
         
     while True:
         try:
-            cursor = cache_coll.find({"processed":False}).limit(1000)
+            cursor = cache_coll.find({"processed":False}).limit(10000)
             any_success = False
             for e in cursor:
                 s = archive_one(e, cache_coll, fs, private_key_file_path, parsemain)

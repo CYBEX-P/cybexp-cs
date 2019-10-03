@@ -1,71 +1,117 @@
-##import os, pdb, logging
-##from datetime import datetime as dt
-##from pymongo import MongoClient
-##from tahoe import get_backend, NoBackend, MongoBackend, Attribute, Object, Event, Session, parse
-##
-##_PROJECTION = {"_id":0, "filters":0, "bad_data":0}
-##_VALID_ATT = ['ipv4', 'country_code3', 'longitude', 'region_name', 'city_name', 'region_code', 'country_name', 'latitude', 'timezone', 'continent_code', 'country_code2']
-##
-##def filt_honeypot(backend=NoBackend()):
-##    try: 
-##        filt_id = "filter--818e89c3-ed10-4e10-b5fb-ef6d37e5b6c8"
-##        query = {"$and" : [{"raw_type" : "x-unr-honeypot"}, {"filters" : { "$ne": filt_id }}, { "data.eventid" : {"$exists":False}}, {"_valid" : {"$ne" : False}}]}
-##        if os.getenv("_MONGO_URL"): backend = get_backend()
-##        cursor = backend.find(query, _PROJECTION)
-##        if cursor.count() == 0: return False
-##        for raw in cursor:
-##            tags = raw["tags"]
-##            if "PFSense" in tags: j = Pfsense(raw)
-##            print(raw)
-##            pdb.set_trace()
-####            eventid = raw["data"]["eventid"]
-####            if   eventid == "cowrie.client.kex": j = ClientKex(raw)  
-####            elif eventid == "cowrie.client.size": j = ClientSize(raw)
-####            elif eventid == "cowrie.client.var": j = ClientVar(raw)
-####            elif eventid == "cowrie.client.version": j = ClientVersion(raw)
-####            elif eventid == "cowrie.command.failed": j = CommandInput(raw)
-####            elif eventid == "cowrie.command.input": j = CommandInput(raw)
-####            elif eventid == "cowrie.command.success": j = CommandInput(raw)
-####            elif eventid == "cowrie.direct-tcpip.data": j = DirectTcpIpData(raw) 
-####            elif eventid == "cowrie.direct-tcpip.request": j = DirectTcpIpRequest(raw)
-####            elif eventid == "cowrie.login.failed": j = LoginFailed(raw) 
-####            elif eventid == "cowrie.login.success": j = LoginSuccess(raw)
-####            elif eventid == "cowrie.session.closed": j = SessionClosed(raw)
-####            elif eventid == "cowrie.session.connect": j = SessionConnect(raw)
-####            elif eventid == "cowrie.session.file_download": j = SessionFileDownload(raw)
-####            elif eventid == "cowrie.session.file_download.failed": j = SessionFileDownload(raw)
-####            else:
-####                logging.warning("proc.analytics.filters.filt_cowrie.filt_cowrie: Unknown eventid: " + eventid)
-####                continue
-##    except:
-##        logging.error("proc.analytics.analytics: ", exc_info=True)
-####        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
-##        return False
-##    else:
+import os, logging
+from datetime import datetime as dt
+from tahoe import get_backend, NoBackend, MongoBackend, Attribute, Object, Event, Session, parse
+import pdb, pprint
+
+_PROJECTION = {"_id":0, "filters":0, "bad_data":0}
+_VALID_ATT = ['ipv4', 'country_code3', 'longitude', 'region_name', 'city_name', 'region_code', 'country_name', 'latitude', 'timezone', 'continent_code', 'country_code2']
+
+
+def filt_honeypot(backend=NoBackend()):
+    try:
+        filt_id = "filter--818e89c3-ed10-4e10-b5fb-ef6d37e5b6c8"
+               
+        if os.getenv("_MONGO_URL"): backend = get_backend()
+        assert isinstance(backend, MongoBackend)
+
+        query = {"itype" : "raw", "sub_type" : "x-unr-honeypot", "data.tags" : "PFSense",
+                 "filters" : { "$ne": filt_id }, "_valid" : {"$ne" : False}}
+
+        cursor = backend.find(query, _PROJECTION)
+        assert cursor
+
+        j = None
+        for raw in cursor:
+            # PFSense Firewall    
+            if 'tags' in raw['data'] and 'PFSense' in raw['data']['tags']:
+                pprint.pprint(raw)
+                pdb.set_trace()
+                j = Pfsense(raw)
+                continue
+
+            # Cowrie Honeypot
+            elif 'eventid' in raw['data']:
+                eventid = raw['data']['eventid']
+                if eventid[:6] != 'cowrie':
+                    logging.warning("Unknown eventid: " + eventid)
+                eventid = eventid[7:]
+                
+                f = {
+                        'client.kex' : ClientKex,
+                        'client.size' : ClientSize,
+                        'client.var' : ClientVar,
+                        'client.version' : ClientVersion,
+                        'command.failed' : CommandInput,
+                        'command.input' : CommandInput,
+                        'command.success' : CommandInput,
+                        'direct-tcpip.data' : DirectTcpIpData,
+                        'direct-tcpip.request' : DirectTcpIpRequest,
+                        'login.failed' : LoginFailed,
+                        'login.success' : LoginSuccess,
+                        'session.closed' : SessionClosed,
+                        'session.connect' : SessionConnect,
+                        'session.file_download' : SessionFileDownload,
+                        'session.file_download.failed' : SessionFileDownload
+                    }.get(eventid)
+
+                if not f :
+                    logging.warning("Unknown eventid: " + eventid + " in " + raw['uuid'])
+                else:
+                    j = f(raw)
+
+            # Unknown data
+            if not j:
+                logging.warning("Unknown honeypot data: " + raw['uuid'])
+
+        if cursor.retrieved == 0: return False
+        
+    except:
+        logging.error("Error -- ", exc_info=True)
+##        backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
+        return False
+
+    else:
 ##        backend.update_one( {"uuid" : raw["uuid"]}, {"$addToSet": {"filters": filt_id} })
-##    return True
-##
-####class Pfsense():
-####    def __init__(self):
-####        self.raw, self.data, self.event_type = raw, raw["data"], 'firewall_log'
-####
-####        src_obj = Object('src', [Attribute('hostname', self.data["src_ip"])])
-####        dst_obj = Object('dst', [Attribute('url', self.data["dst_ip"])])
-######        src_port_obj = Object('src_port', 
-######        dst_port_obj = Object('dst_port', [Attribute('port', self.data["dst_port"])])
-######        protocol_obj = Object('protocol', [Attribute('protocol', "TCP")])
-####        
-####        
-####        self.orgid = self.raw["orgid"]
-####        timestamp = self.data["@timestamp"]
-####        timestamp = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
-####        
-####        geoip_attributes = [Attribute(k, v) for k,v in self.data["geoip"].items()]# if k in  _VALID_ATT]
-####        geoip_obj = Object('geoip', geoip_attributes)
-####        self.objects.append(geoip_obj)
-####        
-####        e = Event(self.event_type, self.orgid, self.objects, timestamp)
-##
+        return True
+
+
+class Pfsense():
+    def __init__(self, raw):
+        data, event_type = raw["data"], 'firewall_log'
+
+        b = NoBackend()
+
+        iface = Attribute('iface', data['iface'], backend=b)
+
+        protocol = Attribute('protocol', data['proto'], backend=b)
+
+        srcip = Attribute('ipv4', data['src_ip'], backend=b)
+        srcport = Attribute('port', data['src_port'], backend=b)
+        src = Object('src', [srcip, srcport], backend=b)
+        
+        dstip = Attribute('ipv4', data['dest_ip'], backend=b)
+        dstport = Attribute('port', data['dest_port'], backend=b)
+        dst = Object('dst', [dstip, dstport], backend=b)
+        
+        pdb.set_trace()
+        
+##        src_obj = Object('src', [Attribute('hostname', self.data["src_ip"])])
+##        dst_obj = Object('dst', [Attribute('ipv4', self.data["dest_ip"])])
+####        src_port_obj = Object('src_port', 
+####        dst_port_obj = Object('dst_port', [Attribute('port', self.data["dst_port"])])
+####        protocol_obj = Object('protocol', [Attribute('protocol', "TCP")])
+##        
+##        
+##        self.orgid = self.raw["orgid"]
+##        timestamp = self.data["@timestamp"]
+##        timestamp = dt.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
+##        
+##        geoip_attributes = [Attribute(k, v) for k,v in self.data["geoip"].items()]# if k in  _VALID_ATT]
+##        geoip_obj = Object('geoip', geoip_attributes)
+##        self.objects.append(geoip_obj)
+##        
+##        e = Event(self.event_type, self.orgid, self.objects, timestamp)
+
 ##
 ##
 ##class ClientKex(Cowrie):
@@ -213,11 +259,29 @@
 ##        else: self.objects += [Object('file', [filename_att, sha256_att])]
 ##        super().__init__()
 ##
-##
-##    
-##
-##    
-##
-##
-##    
-##
+
+   
+if __name__ == "__main__":
+    config = { 
+		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+##                "mongo_url" : "mongodb://localhost:27017/",
+		"analytics_db" : "tahoe_db",
+		"analytics_coll" : "instances"
+            }
+    
+    os.environ["_MONGO_URL"] = config.pop("mongo_url")
+    os.environ["_TAHOE_DB"] = config.pop("analytics_db", "tahoe_db")
+    os.environ["_TAHOE_COLL"] = config.pop("analytics_coll", "instances")
+
+    b = get_backend()
+    q = {"sub_type" : "x-unr-honeypot", "data.tags" : "PFSense"}
+    rr = b.find(q)
+    for i in rr:
+        if 'ip_ver' in i['data'] and i['data']['ip_ver'] == '6':
+            print(i['data']['src_port'], i['data']['dest_port'])
+    pdb.set_trace()
+    
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s - File: %(filename)s - Function: %(funcName)s - Line: %(lineno)s -- %(message)s') 
+
+    filt_honeypot()    
+

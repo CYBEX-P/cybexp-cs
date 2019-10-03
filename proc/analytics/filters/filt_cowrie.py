@@ -284,10 +284,21 @@ class SessionFileDownload(Cowrie):
     
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') 
-
-    filt_cowrie()    
+##if __name__ == "__main__":
+##    config = { 
+##		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+##                "mongo_url" : "mongodb://localhost:27017/",
+##		"analytics_db" : "tahoe_db",
+##		"analytics_coll" : "instances"
+##            }
+##    
+##    os.environ["_MONGO_URL"] = config.pop("mongo_url")
+##    os.environ["_TAHOE_DB"] = config.pop("analytics_db", "tahoe_db")
+##    os.environ["_TAHOE_COLL"] = config.pop("analytics_coll", "instances")
+##    
+##    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') 
+##
+##    filt_cowrie()    
 
 
     
