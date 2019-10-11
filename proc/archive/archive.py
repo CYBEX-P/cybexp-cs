@@ -100,7 +100,7 @@ def archive(config):
         
     while True:
         try:
-            cursor = cache_coll.find({"processed":False, "bad_data":{"$ne":True}}).limit(10000)
+            cursor = cache_coll.find({"processed":False, "bad_data":{"$ne":True}}, skip = 2500000, limit=100000)
             any_success = False
             for e in cursor:
                 s = archive_one(e, cache_coll, fs, private_key_file_path, parsemain)

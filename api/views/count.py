@@ -23,10 +23,25 @@ class Count(CybResource):
         c = att.count(self.start, self.end)
         return {"count" : c, att.sub_type : att.data}, 200
 
-
+class CountByOrgSummary(Count):
+    @jwt_required
+    def post(self):
+        r = self.get_dtrange()
+        if not r: return {"message" : self.error}, self.code
         
+        att = Attribute(self.att_type, self.data)
+        rep = att.countbyorgsummary(start=self.start, end=self.end)
+        return rep, 200
 
-
+class CountByOrgCategorySummary(Count):
+    @jwt_required
+    def post(self):
+        r = self.get_dtrange()
+        if not r: return {"message" : self.error}, self.code
+        
+        att = Attribute(self.att_type, self.data)
+        rep = att.countbyorgsummary('org_category', start=self.start, end=self.end)
+        return rep, 200
         
         
     
