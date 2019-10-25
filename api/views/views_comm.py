@@ -1,4 +1,4 @@
-import pymongo, pytz, stix2, json, os, time
+import pymongo, pytz, stix2, json, os, time, pdb
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 from dateutil.parser import parse as parse_time
@@ -146,16 +146,24 @@ builtins._TEST_ATT = [
     "protocol-t",
     "sha256-t",
     "url-t"
-]   
+]
+
+attprsr = reqparse.RequestParser()
+for att_type in _VALID_ATT: attprsr.add_argument(att_type)
+for att_type in _TEST_ATT: attprsr.add_argument(att_type)
+
 common_parser = reqparse.RequestParser()
 common_parser.add_argument('last')
 common_parser.add_argument('from')
 common_parser.add_argument('to')
 common_parser.add_argument('timezone')
 
+
 class CybResource(Resource):
     def __init__(self):
-        self.tzname = 'UTC'       
+        self.tzname = 'UTC'
+        r = self.get_dtrange()
+        if not r: return
 
     def get_dtrange(self):
         req = common_parser.parse_args()
@@ -190,20 +198,20 @@ class CybResource(Resource):
         if tzname: self.tzname = 'UTC'
         try: self.tz = pytz.timezone(self.tzname)
         except pytz.UnknownTimeZoneError:
-            self.error, self.code = 'Unknown Timezone : ' + tzname, 422 
+            self.error, self.status = 'Unknown Timezone : ' + tzname, 422 
             return False
 
         if start:
             try: start = parse_time(start)
             except ValueError:
-                self.error, self.code = 'Invalid from-time : ' + start, 422 
+                self.error, self.status = 'Invalid from-time : ' + start, 422 
                 return False
             self.start = self.tz.localize(start).astimezone(utc).timestamp()
 
         if end:
             try: end = parse_time(end)
             except ValueError:
-                self.error, self.code = 'Invalid to-time : ' + end, 422 
+                self.error, self.status = 'Invalid to-time : ' + end, 422 
                 return False
             self.end = self.tz.localize(end).astimezone(utc).timestamp()
 
