@@ -4,8 +4,11 @@ from tahoe import Attribute, parse
 from flask_restful import Resource, reqparse
 import pdb
 
+from collections import defaultdict
+
 rparser = reqparse.RequestParser()
 for att_type in _VALID_ATT: rparser.add_argument(att_type)
+for att_type in _TEST_ATT: rparser.add_argument(att_type)
 rparser.add_argument('level', type=int)
 
 class Related(Resource):
@@ -27,6 +30,25 @@ class Related(Resource):
             e = []
             for i in r: e.append(i)
             return e
+
+class RelatedAttributeSummary2(Related):
+    def get_related(self):
+        att = Attribute(self.att_type, self.data)
+        r = att.related(self.lvl)
+        r = [i for i in r]
+        print(r)
+        ret = {}
+        for i in r:
+            if i["itype"] == "event":
+                if not i["sub_type"] in ret: ret[i["sub_type"]] = {}
+                for j in  r:
+                    if j["itype"] == "attribute" and j["uuid"] in i["_ref"]:
+                        if j["sub_type"] in ret[i["sub_type"]]:
+                            if j["data"] not in ret[i["sub_type"]][j["sub_type"]]:
+                                ret[i["sub_type"]][j["sub_type"]] += [j["data"]]
+                        else:
+                            ret[i["sub_type"]][j["sub_type"]] = [j["data"]]
+        return ret
 
 class RelatedAttribute(Related):
     def get_related(self):

@@ -9,23 +9,32 @@ for att_type in _VALID_ATT: parser.add_argument(att_type)
 
 class Count(CybResource):
     def __init__(self):
+        self.invalid = False
+        
         req = parser.parse_args()
         req = {k:v for k,v in req.items() if v is not None}
-        self.att_type, self.data = list(req.items())[0]
+        if req: self.att_type, self.data = list(req.items())[0]
+        else: self.invalid = True
+        
         super().__init__()
 
     @jwt_required
     def post(self):
+        if self.invalid: return {'error':"Invalid attribute type"}, 400
+        
         r = self.get_dtrange()
         if not r: return {"message" : self.error}, self.code
         
         att = Attribute(self.att_type, self.data)
         c = att.count(self.start, self.end)
-        return {"count" : c, att.sub_type : att.data}, 200
+        mc = att.count(self.start, self.end, malicious=True)
+        return {"count" : c, "malicious":mc, att.sub_type : att.data}, 200
 
 class CountByOrgSummary(Count):
     @jwt_required
     def post(self):
+        if self.invalid: return {'error':"Invalid attribute type"}, 400
+        
         r = self.get_dtrange()
         if not r: return {"message" : self.error}, self.code
         
@@ -36,6 +45,8 @@ class CountByOrgSummary(Count):
 class CountByOrgCategorySummary(Count):
     @jwt_required
     def post(self):
+        if self.invalid: return {'error':"Invalid attribute type"}, 400
+        
         r = self.get_dtrange()
         if not r: return {"message" : self.error}, self.code
         
