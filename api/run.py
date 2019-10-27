@@ -51,13 +51,17 @@ api.add_resource(views.Raw, '/api/v1.0/raw')
 
 api.add_resource(views.Related, '/api/v1.0/related')
 api.add_resource(views.RelatedAttribute, '/api/v1.0/related/attribute')
+api.add_resource(views.RelatedEvent, '/api/v1.0/related/event')
 api.add_resource(views.RelatedAttributeSummary, '/api/v1.0/related/attribute/summary')
 api.add_resource(views.RelatedAttributeSummaryByEvent, '/api/v1.0/related/attribute/summary/byevent')
-api.add_resource(views.RelatedEventSummary, '/api/v1.0/related/event/summary')
 
 api.add_resource(views.Count,'/api/v1.0/count')
-api.add_resource(views.CountByOrgSummary, '/api/v1.0/org')
-api.add_resource(views.CountByOrgCategorySummary, '/api/v1.0/orgsec')
+api.add_resource(views.CountMalicious,'/api/v1.0/count/malicious')
+api.add_resource(views.CountByEventAtt,'/api/v1.0/count/byevent/byatt')
+api.add_resource(views.CountByOrgSummary, '/api/v1.0/count/byorg')
+api.add_resource(views.CountMaliciuosByOrgSummary, '/api/v1.0/count/malicious/byorg')
+api.add_resource(views.CountByOrgCategorySummary, '/api/v1.0/count/byorgsec')
+api.add_resource(views.CountMaliciousByOrgCategorySummary, '/api/v1.0/count/malicious/byorgsec')
 
 
 

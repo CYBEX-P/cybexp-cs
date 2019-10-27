@@ -148,22 +148,47 @@ builtins._TEST_ATT = [
     "url-t"
 ]
 
-attprsr = reqparse.RequestParser()
-for att_type in _VALID_ATT: attprsr.add_argument(att_type)
-for att_type in _TEST_ATT: attprsr.add_argument(att_type)
+
 
 common_parser = reqparse.RequestParser()
 common_parser.add_argument('last')
 common_parser.add_argument('from')
 common_parser.add_argument('to')
-common_parser.add_argument('timezone')
+common_parser.add_argument('tzname')
 
 
 class CybResource(Resource):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        self.sub_type = kwargs.pop('sub_type', None)
+        self.report_id = kwargs.pop('report_id', None)
+        self.uuid = kwargs.pop('uuid', None)
+        
         self.tzname = 'UTC'
         r = self.get_dtrange()
-        if not r: return
+
+    @jwt_required
+    def get(self): return self.getorpost()
+
+    @jwt_required
+    def post(self): return self.getorpost()
+
+    def getorpost(self):
+        return "getorpost() method not implemented", 501
+
+    def get_level_page(self):
+        rprsr = reqparse.RequestParser()
+        rprsr.add_argument('level', type=int)
+        rprsr.add_argument('page', type=int)
+
+        req = rprsr.parse_args()
+        req = {k:v for k,v in req.items() if v is not None}
+
+        self.lvl = req.pop('level', 1)
+        self.page = req.pop('page', 1)
+
+        if self.lvl < 1 or self.page < 1:
+            self.error, self.status = 'Minimum value for level or page is 1', 422 
+        
 
     def get_dtrange(self):
         req = common_parser.parse_args()
@@ -176,11 +201,12 @@ class CybResource(Resource):
         last = req['last']
         start = req['from']
         end = req['to']
-        tzname = req['timezone']
+        tzname = req['tzname']
 
-        assert(not (last and (start or end)))
-
-        if ((last or start or end)): self.dtreq = True
+        if last or start or end: self.dtreq = True
+        if (last and start) or (last and end):
+            self.error, self.status = 'Do not specify "last" with "from" or "to"', 422 
+            return False
 
         def tosec(s):
             spu = {"s":1, #"sec":1, "second":1, "seconds":1,
@@ -195,26 +221,76 @@ class CybResource(Resource):
         if last:
             self.start = self.end - tosec(last)
 
-        if tzname: self.tzname = 'UTC'
+        if tzname: self.tzname = tzname
         try: self.tz = pytz.timezone(self.tzname)
         except pytz.UnknownTimeZoneError:
-            self.error, self.status = 'Unknown Timezone : ' + tzname, 422 
+            self.error, self.status = 'Unknown Timezone Name : ' + tzname, 422 
             return False
 
         if start:
-            try: start = parse_time(start)
+            try: self.start = float(start)
+            except ValueError:
+                start = parse_time(start)
+                self.start = self.tz.localize(start).astimezone(utc).timestamp()
             except ValueError:
                 self.error, self.status = 'Invalid from-time : ' + start, 422 
                 return False
-            self.start = self.tz.localize(start).astimezone(utc).timestamp()
+            
 
         if end:
-            try: end = parse_time(end)
+            try: self.end = float(end)
+            except ValueError:
+                end = parse_time(end)
+                self.end = self.tz.localize(end).astimezone(utc).timestamp()
             except ValueError:
                 self.error, self.status = 'Invalid to-time : ' + end, 422 
                 return False
-            self.end = self.tz.localize(end).astimezone(utc).timestamp()
-
+            
         return True
 
-            
+    def return_format(self, data):
+        return {
+            'itype': 'report', 'sub_type' : self.sub_type,
+            'orgid' : _REPORT_ORGID, 'timestamp':time.time(),
+            'uuid' : self.uuid, 'report_id' : self.report_id,
+            'data' : data
+        }
+
+    def return_format_paginated(self, data, curpg, nxtpg):
+        if not data: self.status = 205
+        else: self.status = 206
+        
+        return {
+            'itype': 'report', 'sub_type' : self.sub_type,
+            'orgid' : _REPORT_ORGID, 'timestamp':time.time(),
+            'uuid' : self.uuid, 'report_id' : self.report_id,
+            'current_page' : curpg, 'next_page' : nxtpg,
+            'data' : data,
+        }
+
+
+
+from tahoe import Attribute
+
+attprsr = reqparse.RequestParser()
+for att_type in _VALID_ATT: attprsr.add_argument(att_type)
+for att_type in _TEST_ATT: attprsr.add_argument(att_type)
+
+class AttReport(CybResource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        req = attprsr.parse_args()
+        req = {k:v for k,v in req.items() if v is not None}
+        remaining_items = list(req.items())
+
+        if len(remaining_items) != 1:
+            self.error = 'Invalid or missing or multiple att_type, example:{"ip":"1.1.1.1"}'
+            self.status = 400
+            return
+
+        att_type, data = remaining_items[0]
+        self.att = Attribute(att_type, data)
+
+        self.status = 200
+        
