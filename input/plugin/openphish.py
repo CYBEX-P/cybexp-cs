@@ -4,7 +4,7 @@ from .common import *
 
 FEED_URL = "https://openphish.com/feed.txt"
 
-class OpenpishSource(CybexSource):
+class OpenphishSource(CybexSource):
     def fetch_and_post(self):
 
         logging.info(f"Retrieving events from OpenPish at {FEED_URL}")
