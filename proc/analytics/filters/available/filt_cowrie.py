@@ -10,7 +10,7 @@ _PROJECTION = {"_id":0, "filters":0, "_valid":0}
 _GEOIP_ATT = ["city_name", "continent_code", "country_code2", "country_code3", "country_name",
               "dma_code", "ip", "latitude", "longitude", "postal_code", "region_code", "region_name", "timezone"]
 
-def filt_cowrie(backend=NoBackend()):
+def filt_main(backend=NoBackend()):
     try: 
         filt_id = "filter--ad8c8d0c-0b25-4100-855e-06350a59750c"
         if os.getenv("_MONGO_URL"): backend = get_backend()
@@ -19,7 +19,7 @@ def filt_cowrie(backend=NoBackend()):
                  "filters":{"$ne":filt_id}, "_valid" : {"$ne" : False},
                  "data.eventid":{"$exists":True}}
         cursor = backend.find(query, _PROJECTION, no_cursor_timeout=True)
-        if not cursor: logging.error("filt_cowrie: This should not happen")
+        if not cursor: logging.error("filters.filt_cowrie.filt_main: This should not happen")
 
         any_success = False
         for raw in cursor:
@@ -43,7 +43,7 @@ def filt_cowrie(backend=NoBackend()):
                 elif eventid == "cowrie.session.file_download": j = SessionFileDownload(raw)
                 elif eventid == "cowrie.session.file_download.failed": j = SessionFileDownload(raw)
                 else:
-                    logging.warning("filt_cowrie 0: Unknown eventid: " + eventid)
+                    logging.warning("filters.filt_cowrie.filt_main 0: Unknown eventid: " + eventid)
             except (KeyboardInterrupt, SystemExit): raise
             except:
                 logging.error("\nfilt_cowrie 1: eventid: " + eventid +
@@ -55,7 +55,7 @@ def filt_cowrie(backend=NoBackend()):
             any_success = any_success or bool(j)
 
     except:
-        logging.error("filt_cowrie 2: ", exc_info=True)
+        logging.error("filters.filt_cowrie.filt_main 2: ", exc_info=True)
         return False
     return any_success
 
@@ -298,7 +298,7 @@ class SessionFileDownload(Cowrie):
 ##    
 ##    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s:%(message)s') 
 ##
-##    filt_cowrie()    
+##    filt_main()    
 
 
     

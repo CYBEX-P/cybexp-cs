@@ -138,7 +138,7 @@ _ALIAS = {
     "x509-fingerprint-sha256" : ["x509_fingerprint", "x509_fingerprint_sha256"]
 }
 
-def filt_misp(backend=NoBackend()):
+def filt_main(backend=NoBackend()):
     try: 
         filt_id = "filter--f2d1b00a-24fc-4faa-95aa-2932b3b400e5"
         if os.getenv("_MONGO_URL"): backend = get_backend()
@@ -151,7 +151,7 @@ def filt_misp(backend=NoBackend()):
         for raw in cursor:           
             try: j = Misp(copy.deepcopy(raw), backend)
             except:
-                logging.error("proc.analytics.filters.filt_misp.filt_misp 1: " \
+                logging.error("proc.analytics.filters.filt_misp.filt_main 1: " \
                     "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
 ##                backend.update_one( {"uuid" : raw["uuid"]}, {"$set" : {"_valid" : False}})
                 j = False
@@ -161,7 +161,7 @@ def filt_misp(backend=NoBackend()):
             
     except (KeyboardInterrupt, SystemExit): raise
     except:
-        logging.error("proc.analytics.filters.filt_misp.filt_misp.2: ", exc_info=True)
+        logging.error("proc.analytics.filters.filt_misp.filt_main.2: ", exc_info=True)
         return False
     return any_success
 
@@ -238,5 +238,5 @@ class Misp():
         return (t1,v1),(t2,v2)
     
 
-if __name__ == "__main__": filt_misp()
+if __name__ == "__main__": filt_main()
  

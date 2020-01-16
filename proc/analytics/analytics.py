@@ -34,15 +34,29 @@ def analytics(config):
         os.environ["_TAHOE_COLL"] = config.pop("analytics_coll", "instances")
 
         # Don't move the next statement to top, see github issue #5
-        from filters import filt_misp, filt_cowrie  
+        from filters
+        function_name = "filt_main"
+        imported_filters = list(map(
+                                lambda x:
+                                str.replace(x, "filters.enabled.", "")
+                                .replace( "filters.available.", "")
+                                , filters.imported_filters))
 
+        # print(globals()["filters"])
         q = Queue()
-        q.put(filt_misp)
-        q.put(filt_cowrie)
-        
+
+        # Get the function for every filter that is enabled
+        for module in imported_filters:
+            m_module  = getattr(globals()["filters"], module)
+            try:
+                m_func  = getattr(m_module, function_name)
+                q.put(m_func)
+            except AttributeError:
+                logging.warning(f"proc.analytics.analytics.1: Filter {module}.py has no attribute {function_name}()", exc_info=True)
+
         infinite_worker(q)
 
-    except Exception: logging.error("proc.analytics.analytics: ", exc_info=True)
+    except Exception: logging.error("proc.analytics.analytics.2: ", exc_info=True)
 
 if __name__ == "__main__":
     analytics_config = { 
