@@ -19,6 +19,9 @@ def infinite_worker(q):
             else:
                 n_failed_attempts = 0
 
+        except KeyboardInterrupt:
+            logging.info("proc.analytics.analytics: Recieved shutdown signal, exiting infinite worker.")
+            break
         except Exception as exception:
             logging.error("proc.analytics.infinite_worker: ", exc_info=True)
             exponential_backoff(n_failed_attempts)
@@ -34,7 +37,7 @@ def analytics(config):
         os.environ["_TAHOE_COLL"] = config.pop("analytics_coll", "instances")
 
         # Don't move the next statement to top, see github issue #5
-        from filters
+        import filters
         function_name = "filt_main"
         imported_filters = list(map(
                                 lambda x:
@@ -47,7 +50,7 @@ def analytics(config):
 
         # Get the function for every filter that is enabled
         for module in imported_filters:
-            m_module  = getattr(globals()["filters"], module)
+            m_module  = getattr(locals()["filters"], module)
             try:
                 m_func  = getattr(m_module, function_name)
                 q.put(m_func)

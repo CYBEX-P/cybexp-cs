@@ -150,6 +150,7 @@ def filt_main(backend=NoBackend()):
         any_success = False
         for raw in cursor:           
             try: j = Misp(copy.deepcopy(raw), backend)
+            except (KeyboardInterrupt, SystemExit): raise
             except:
                 logging.error("proc.analytics.filters.filt_misp.filt_main 1: " \
                     "MISP Event id " + raw["data"]["Event"]["id"], exc_info=True)
