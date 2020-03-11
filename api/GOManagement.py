@@ -125,3 +125,89 @@ class SecretResource(Resource):
         return {
             'answer': 42
         }
+
+
+
+
+
+
+
+
+class CreateGroup(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class CreateOrg(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class DeleteGroup(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class DeleteOrg(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class ClearGroup(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class ClearOrg(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupAddUser(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupAddOrg(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class OrgAddUser(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupRemoveUser(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupRemoveOrg(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupRemoveUorO(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class OrgRemoveUser(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupsOwned(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class OrgsOwned(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupListUsers(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupListOrgs(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class GroupListAllUers(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+class OrgListUsers(Resource):
+    @jwt_required
+    def getorpost(self):
+        return {'message': 'Not Implemented'}, 501
+
+

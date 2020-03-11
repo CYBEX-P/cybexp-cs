@@ -40,6 +40,34 @@ api.add_resource(resources.UserLogoutRefresh, '/logout/refresh')
 api.add_resource(resources.TokenRefresh, '/token/refresh')
 api.add_resource(resources.AllUsers, '/users')
 
+
+# api.add_resource(GOManagement.CreateGroup, '/group/create')
+# api.add_resource(GOManagement.CreateOrg  , '/org/create')
+# api.add_resource(GOManagement.DeleteGroup, '/group/delete')
+# api.add_resource(GOManagement.DeleteOrg  , '/org/delete')
+# api.add_resource(GOManagement.ClearGroup , '/group/clear')
+# api.add_resource(GOManagement.ClearOrg   , '/org/clear')
+
+
+# api.add_resource(GOManagement.GroupAddUser, '/group/add/user')
+# api.add_resource(GOManagement.GroupAddOrg , '/group/add/org')
+# api.add_resource(GOManagement.OrgAddUser  , '/org/add/user')
+
+# api.add_resource(GOManagement.GroupRemoveUser, '/group/remove/user')
+# api.add_resource(GOManagement.GroupRemoveOrg , '/group/remove/org')
+# api.add_resource(GOManagement.GroupRemoveUorO, '/group/remove/')
+# api.add_resource(GOManagement.OrgRemoveUser  , '/org/remove/user')
+
+# api.add_resource(GOManagement.GroupsOwned, '/group/owned')
+# api.add_resource(GOManagement.OrgsOwned  , '/org/owned')
+
+# api.add_resource(GOManagement.GroupListUsers  , '/group/list/only/users')
+# api.add_resource(GOManagement.GroupListOrgs   , '/group/list/only/orgs')
+# api.add_resource(GOManagement.GroupListAllUers, '/group/list/all') # will recurse
+# api.add_resource(GOManagement.OrgListUsers    , '/org/list/users')
+
+
+
 api.add_resource(views.AttributeSummary, '/api/v1.0/summary/attribute')
 api.add_resource(views.AttributeValueSummary, '/api/v1.0/summary/attribute/<att_type>')
 api.add_resource(views.EventSummary, '/api/v1.0/summary/event')

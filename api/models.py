@@ -1,11 +1,11 @@
 from database import db
 from passlib.hash import pbkdf2_sha256 as sha256
-from flask_sqlalchemy import desc
+#from flask_sqlalchemy import desc
 
 class UserModel(db.Model):
     __tablename__ = 'users'
 
-    id = db.Column(db.Integer, primary_key = True)
+    tid = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(120), unique = True, nullable = False)
     password = db.Column(db.String(120), nullable = False)
     orgid = db.Column(db.String(36), nullable = False)
@@ -27,7 +27,8 @@ class UserModel(db.Model):
                 'username': x.username,
                 'password': x.password,
                 'orgid': x.orgid,
-                'isadmin': x.isadmin
+                'isadmin': x.isadmin,
+                'userid': x.userid
             }
         return {'users': list(map(lambda x: to_json(x), UserModel.query.all()))}
 
@@ -223,7 +224,7 @@ class GALModel(db.Model):
 
 
 
+# class OMLModel(db.Model):
 
 
-
-+ OMLModel.return_org_memb(oid)
+# + OMLModel.return_org_memb(oid)
