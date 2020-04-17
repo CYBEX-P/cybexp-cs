@@ -12,7 +12,7 @@ import werkzeug
 # Load Cache Database
 from pymongo import MongoClient
 import gridfs
-URI = 'mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin'
+URI = 'mongodb://127.0.0.1:27017/?authSource=admin'
 client = MongoClient(URI)
 
 ccoll = client.cache_db.file_entries
