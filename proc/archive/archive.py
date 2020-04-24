@@ -4,6 +4,8 @@ from pymongo.errors import CursorNotFound
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
 
+from encrypted_index import add_encrypted_refs_to_record
+
 if __name__ == "__main__":
     archive_config = {
         "mongo_url": "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
@@ -47,6 +49,10 @@ def archive_one(event, cache_coll, fs, pkey_fp, parsemain):
         timezone = event["timezone"]
 
         fid = event["fid"]
+        encrypted_ref_index = event.get("encrypted_ref", None)
+
+        data = add_encrypted_refs_to_record(data, [encrypted_ref_index])
+
         f = fs.get(fid)
         data = str(decrypt_file(f, pkey_fp))
 
@@ -55,7 +61,10 @@ def archive_one(event, cache_coll, fs, pkey_fp, parsemain):
         if raw:
             cache_coll.update_one(
                 {"_id": event["_id"]},
-                {"$set": {"processed": True}, "$addToSet": {"_ref": raw.uuid}},
+                {
+                    "$set": {"processed": True},
+                    "$addToSet": {"_ref": raw.uuid, "_encref": data["_encref"]},
+                },
             )
             return True
         else:
@@ -120,6 +129,19 @@ def archive(config):
             n_failed_attempts += 1
 
         exponential_backoff(n_failed_attempts)
+
+
+def detenc_bellare07(msg: str) -> bytes:
+    with open("detenc.pem") as keyfile:
+        key = RSA.importKey(keyfile.read())
+
+    key._randfunc = lambda n: b"0" * n
+
+    cipher = PKCS1_OAEP.new(key)
+
+    ciphertext = cipher.encrypt(msg.encode("UTF-8"))
+
+    return ciphertext
 
 
 if __name__ == "__main__":
