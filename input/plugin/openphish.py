@@ -8,14 +8,14 @@ FEED_URL = "https://openphish.com/feed.txt"
 class OpenphishSource(CybexSource):
     def fetch_and_post(self):
 
-        logging.info(f"Retrieving events from OpenPish at {FEED_URL}")
+        logging.info(f"Retrieving events from OpenPhish at {FEED_URL}")
         response = requests.get(FEED_URL)
 
         if response.ok:
 
             text = response.text
             count = text.count('\n')
-            logging.info(f"Retrieved {count} records from OpenPish.")
+            logging.info(f"Retrieved {count} records from OpenPhish.")
             self.post_event_to_cybex_api(text)
 
         else:
