@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from .common import *
+import requests
 
 FEED_URL = "https://openphish.com/feed.txt"
 
