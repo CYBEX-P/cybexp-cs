@@ -20,5 +20,5 @@ class OpenphishSource(CybexSource):
 
         else:
             logging.error(
-                "api.input.openpishSource.fetch -- \n\t" + response.reason
+                "api.input.openphishSource.fetch -- \n\t" + response.reason
             )
