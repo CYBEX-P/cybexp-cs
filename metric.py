@@ -1,7 +1,9 @@
 import time, pdb, logging
 from pymongo import MongoClient
 
-URL = "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin"
+#URL = "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin"
+URL = "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0"
+
 client = MongoClient(URL)
 cache_db = client.cache_db
 tahoe_db = client.tahoe_db
