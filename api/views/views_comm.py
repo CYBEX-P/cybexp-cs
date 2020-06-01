@@ -219,7 +219,11 @@ class CybResource(Resource):
             return int(s[:-1]) * spu[s[-1]]
                 
         if last:
-            self.start = self.end - tosec(last)
+            try:
+               self.start = self.end - tosec(last)
+            except:
+                self.error, self.status = 'Invalid value for last: ' + last, 422 
+                return False
 
         if tzname: self.tzname = tzname
         try: self.tz = pytz.timezone(self.tzname)
