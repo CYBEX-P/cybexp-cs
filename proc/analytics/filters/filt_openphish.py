@@ -15,10 +15,8 @@ def filt_openphish(backend=NoBackend()):
         if os.getenv("_MONGO_URL"): backend = get_backend()
         
         query = {"itype":"raw", "sub_type":"x-openphish",
-                 "filters":{"$ne":filt_id}, "_valid" : {"$ne" : False},
-                 "data":{"$exists":True},
-                 "data.timestamp":{"$exists":True},
-                 "data.openphish_type":{"$exists":True}}
+                 "filters":{"$ne":filt_id}, "_valid" : {"$ne" : False}
+                 }
         cursor = backend.find(query, _PROJECTION, no_cursor_timeout=True)
         if not cursor: logging.error("filt_openphish: This should not happen")
 
