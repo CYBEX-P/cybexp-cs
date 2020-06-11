@@ -70,7 +70,7 @@ class OpenPhish():
 
 class OpenPhish_Community(OpenPhish):
     def __init__(self, raw):
-        #print("crating comunity")
+        #print("creating community")
         self.orgid = raw["orgid"]
         self.event_type = 'sighting'
         #print("OG RAW:", raw)
@@ -150,4 +150,3 @@ class OpenPhish_Community(OpenPhish):
 
 
     
-
