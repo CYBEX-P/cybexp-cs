@@ -13,6 +13,8 @@ plugin_for_type = {
     "misp_file": plugin.MISPFileSource,
     "websocket": plugin.WebsocketSource,
     "phishtank": plugin.PhishtankSource,
+    "openphish": plugin.OpenphishSource,
+
 }
 
 

@@ -34,12 +34,13 @@ def analytics(config):
         os.environ["_TAHOE_COLL"] = config.pop("analytics_coll", "instances")
 
         # Don't move the next statement to top, see github issue #5
-        from filters import filt_misp, filt_cowrie  
+        from filters import filt_misp, filt_cowrie , filt_openphish 
 
         q = Queue()
         q.put(filt_misp)
         q.put(filt_cowrie)
-        
+        q.put(filt_openphish)
+
         infinite_worker(q)
 
     except Exception: logging.error("proc.analytics.analytics: ", exc_info=True)

@@ -38,6 +38,14 @@
       "timezone": "UTC",
       "orgid": "80093a09-afb6-47c1-8566-344c9e605c8b",
       "seconds_between_fetches": 43200
+    },
+    {
+      "type": "openphish",
+      "name": "openphish.com",
+      "typtag": "openphish-file-feed",
+      "timezone": "UTC",
+      "orgid": "55dd2b8a-c852-4bf8-95f2-ec1a67c8fed9",
+      "seconds_between_fetches": 43200
     }
   ],
   "api_srv": {
