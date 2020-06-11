@@ -5,7 +5,7 @@ from datetime import datetime as dt
 
 if __name__ == "__main__": from demo_env import *
     
-from tahoe import get_backend, NoBackend, Attribute, Event, parse #, Object, Session
+from tahoe import get_backend, NoBackend, Attribute, Event, parse, UrlObejct #, Object, Session
 
 _PROJECTION = {"_id":0, "filters":0, "_valid":0}
 
@@ -72,20 +72,34 @@ class OpenPhish_Community(OpenPhish):
     def __init__(self, raw):
         #print("crating comunity")
         self.orgid = raw["orgid"]
-        self.event_type = 'openphish_url'
+        self.event_type = 'sighting'
         #print("OG RAW:", raw)
         self.raw_data, self.raw = raw.pop("data"), raw
         self.timestamp = self.raw_data["timestamp"]
 
-        attr_list = [Attribute('url', url) for url in self.raw_data["URLs"]]
+        urlobject_list = [UrlObject(url, malicious=True, source="openphish") for url in self.raw_data["URLs"]]
         event_list = list()
 
-        for attr in attr_list:
-            event_list.append(Event(self.event_type, [attr], self.orgid, self.timestamp, malicious=True, mal_data=[attr] ))
+        for uo in urlobject_list:
+            event_list.append(Event(self.event_type, [uo], self.orgid, self.timestamp, malicious=True, mal_data=[uo] ))
 
 
         self.event_list = event_list
         super().__init__()
+
+
+
+
+
+
+
+
+
+
+############################################
+########### NOT FINISHED ###################
+########### NOT TESTED #####################
+############################################
 
 # class OpenPhish_Premium(OpenPhish):
 #     def __init__(self, raw):
