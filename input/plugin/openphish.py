@@ -9,7 +9,7 @@ class OpenphishSource(CybexSource):
     def fetch_and_post(self):
 
         logging.info(f"Retrieving events from OpenPhish at {FEED_URL}")
-        response = requests.get(FEED_URL)
+        response = requests.get(_FEED_URL)
 
         if response.ok:
 
