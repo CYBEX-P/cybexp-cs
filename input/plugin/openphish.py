@@ -3,7 +3,7 @@
 from .common import *
 import requests
 
-FEED_URL = "https://openphish.com/feed.txt"
+_FEED_URL = "https://openphish.com/feed.txt" 
 
 class OpenphishSource(CybexSource):
     def fetch_and_post(self):
