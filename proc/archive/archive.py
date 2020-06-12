@@ -6,7 +6,7 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 
 if __name__ == "__main__":
     archive_config = {
-        "mongo_url": "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+        "mongo_url": "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0",
         "cache_db": "cache_db",
         "cache_coll": "file_entries",
         "archive_db": "tahoe_db",

@@ -47,7 +47,7 @@ def analytics(config):
 
 if __name__ == "__main__":
     analytics_config = { 
-		"mongo_url" : "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin",
+		"mongo_url" : "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0",
 		"analytics_db" : "tahoe_db",
 		"analytics_coll" : "instances"
             }

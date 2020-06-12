@@ -3,7 +3,8 @@ from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 from dateutil.parser import parse as parse_time
 
-os.environ["_MONGO_URL"] = "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin"
+#os.environ["_MONGO_URL"] = "mongodb://cybexp_user:CybExP_777@134.197.21.231:27017/?authSource=admin"
+os.environ["_MONGO_URL"] = "mongodb://mongo1,mongo2,mongo2:27020/?replicaSet=rs0"
 os.environ["_TAHOE_DB"] = "tahoe_db"
 os.environ["_TAHOE_COLL"] = "instances"
 
