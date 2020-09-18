@@ -6,10 +6,10 @@ def parsemain(typtag, orgid, timezone, data):
     try:
         orgid = "identity--" + orgid
         raw_sub_type = {
-            "misp-api": "x-misp-event",
-            "unr-honeypot": "x-unr-honeypot",
-            "phishtank-api": "x-phishtank",
-            "openphish-file-feed": "x-openphish",
+            "misp-api": "misp_event",
+            "unr-honeypot": "unr_honeypot",
+            "phishtank-api": "phishtank",
+            "openphish-file-feed": "openphish",
         }.get(typtag, None)
         if raw_sub_type:
             parsed_raw_data = subtype_parser(typtag, data)
